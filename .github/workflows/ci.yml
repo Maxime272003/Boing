@@ -48,3 +48,20 @@ jobs:
           cache: npm
       - run: npm ci && npm run build
       - run: cargo test --manifest-path src-tauri/Cargo.toml
+
+  windows:
+    name: Compilation Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      # Compile l'exe sans créer l'installeur (pas besoin de la clé de signature ici)
+      - run: npx tauri build --no-bundle
