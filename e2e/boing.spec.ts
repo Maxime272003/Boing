@@ -101,6 +101,14 @@ test.describe('Candidature de bout en bout', () => {
     // Refuser l'accroche : la version adaptée garde l'originale
     await page.getByTestId('cv-change').filter({ hasText: 'Accroche réécrite' }).getByRole('button', { name: 'Refuser' }).click();
     await expect(adapted).toContainText('Personne motivée et polyvalente');
+    // Modifier directement un texte dans l'aperçu
+    await adapted.getByRole('button', { name: /Modifier la mission : Accueil physique et téléphonique/ }).click();
+    await page.getByRole('textbox', { name: 'Modifier la mission', exact: true }).fill('Accueil physique et téléphonique (40 appels par jour)');
+    await adapted.getByRole('button', { name: 'Enregistrer' }).click();
+    await expect(adapted).toContainText('(40 appels par jour)');
+    await expect(page.getByTestId('cv-change')).toHaveCount(5);
+    await expect(page.getByTestId('cv-change').last()).toContainText('Modifié à la main');
+    await page.getByLabel('Modèle').selectOption('colonnes');
     await page.getByLabel('Modèle').selectOption('moderne');
     await page.getByRole('button', { name: 'Aperçu PDF' }).click();
     await expect.poll(() => mockState<number>(page, '(b) => b.documents.length')).toBe(1);
@@ -140,7 +148,7 @@ test.describe('Candidature de bout en bout', () => {
     await page.getByRole('button', { name: 'Envoyer la candidature' }).click();
 
     // Suivi
-    await expect(page.getByRole('heading', { name: 'Candidatures' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Candidatures', exact: true })).toBeVisible();
     await expect(page.getByTestId('stat-sent')).toHaveText('1');
     await expect(page.getByTestId('col-sent').getByTestId('app-card')).toContainText('Cabinet Vauban Conseil');
 
@@ -153,6 +161,9 @@ test.describe('Candidature de bout en bout', () => {
       'Lettre_Camille_Martin_Cabinet_Vauban_Conseil.pdf'
     ]);
     expect(outbox[0].smtp).toMatchObject({ host: 'smtp.gmail.com', port: 587, username: 'camille.martin@exemple.fr' });
+
+    // Statistiques
+    await expect(page.getByRole('region', { name: 'Statistiques' }).getByTestId('stats-row').first()).toContainText('Toutes1');
 
     // Les PDF sont rangés dans Mes documents
     await page.getByRole('link', { name: 'Mes documents' }).click();
@@ -281,6 +292,33 @@ test.describe('Mes documents et paramètres', () => {
     await page.getByRole('button', { name: 'Tout effacer' }).click();
     await page.getByRole('dialog').getByRole('button', { name: 'Tout effacer' }).click();
     await expect(page.getByRole('heading', { name: 'Bienvenue sur Boing' })).toBeVisible();
+  });
+
+  test('connexion Gmail sans mot de passe d’application', async ({ page }) => {
+    await onboard(page);
+    await page.getByRole('link', { name: 'Paramètres' }).click();
+    const mail = page.getByRole('region', { name: "Envoi d'e-mails" });
+    await mail.getByLabel('Adresse', { exact: true }).fill('camille.martin@gmail.com');
+    await mail.getByRole('radio', { name: 'Se connecter avec Google' }).click();
+    await expect(mail.getByLabel("Mot de passe d'application")).toHaveCount(0);
+    // Sans identifiant d'application : message clair
+    await mail.getByRole('button', { name: 'Se connecter avec Google' }).last().click();
+    await expect(page.getByText("Identifiant d'application OAuth manquant")).toBeVisible();
+    await mail.getByText("Identifiants de l'application").click();
+    await mail.getByLabel('Identifiant client OAuth').fill('123.apps.googleusercontent.com');
+    await mail.getByRole('button', { name: 'Se connecter avec Google' }).last().click();
+    await expect(mail.getByText('● Compte connecté')).toBeVisible();
+    await expect(mail.getByText('● Configurée')).toBeVisible();
+    await mail.getByRole('button', { name: "M'envoyer un e-mail de test" }).click();
+    await expect(page.getByText('E-mail de test envoyé')).toBeVisible();
+    const outbox = await mockState<any[]>(page, '(b) => b.outbox');
+    expect(outbox[0].smtp).toMatchObject({ auth: 'oauth', provider: 'gmail', oauthClientId: '123.apps.googleusercontent.com' });
+  });
+
+  test('les données sont chiffrées sur le disque', async ({ page }) => {
+    await onboard(page);
+    await page.getByRole('link', { name: 'Paramètres' }).click();
+    await expect(page.getByTestId('encrypted')).toContainText('chiffrés (AES-256)');
   });
 
   test('les données restent après un redémarrage', async ({ page }) => {

@@ -38,12 +38,15 @@ export interface Backend {
   fetchOffers(source: SourceId, criteria: Criteria): Promise<Offer[]>;
   claude(request: CompletionRequest): Promise<Completion>;
   sendMail(smtp: SmtpSettings, mail: OutgoingMail): Promise<void>;
+  /** Ouvre le navigateur pour se connecter à Gmail / Outlook ; le jeton va au coffre. */
+  oauthConnect(provider: 'gmail' | 'outlook', clientId: string, clientSecret: string): Promise<void>;
 
   saveDocument(folder: string, filename: string, bytes: Uint8Array): Promise<string>;
   openUrl(url: string): Promise<void>;
   reveal(path: string): Promise<void>;
   openFile(path: string): Promise<void>;
   dataDir(): Promise<string>;
+  dataEncrypted(): Promise<boolean>;
   exportBackup(): Promise<boolean>;
   importBackup(): Promise<number | null>;
   wipe(): Promise<void>;

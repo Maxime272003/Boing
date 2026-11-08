@@ -3,7 +3,7 @@
 use crate::error::{AppError, AppResult};
 use base64::Engine;
 use lettre::message::{header::ContentType, Attachment, Mailbox, MultiPart, SinglePart};
-use lettre::transport::smtp::authentication::Credentials;
+use lettre::transport::smtp::authentication::{Credentials, Mechanism};
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Deserialize;
 
@@ -14,6 +14,21 @@ pub struct SmtpSettings {
     pub port: u16,
     pub username: String,
     pub from_name: Option<String>,
+    /// "password" (mot de passe d'application) ou "oauth" (connexion Google / Microsoft).
+    #[serde(default)]
+    pub auth: Option<String>,
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub oauth_client_id: Option<String>,
+    #[serde(default)]
+    pub oauth_client_secret: Option<String>,
+}
+
+/// Comment s'authentifier auprès du serveur SMTP.
+pub enum SmtpAuth {
+    Password(String),
+    OAuthToken(String),
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -64,16 +79,20 @@ pub fn build_message(smtp: &SmtpSettings, mail: &OutgoingMail) -> AppResult<Mess
         .map_err(|e| AppError::msg(format!("E-mail invalide : {e}")))
 }
 
-pub async fn send(smtp: &SmtpSettings, password: &str, mail: &OutgoingMail) -> AppResult<()> {
+pub async fn send(smtp: &SmtpSettings, auth: SmtpAuth, mail: &OutgoingMail) -> AppResult<()> {
     let message = build_message(smtp, mail)?;
-    let creds = Credentials::new(smtp.username.trim().to_string(), password.to_string());
+    let (secret, mechanisms) = match auth {
+        SmtpAuth::Password(p) => (p, vec![Mechanism::Plain, Mechanism::Login]),
+        SmtpAuth::OAuthToken(t) => (t, vec![Mechanism::Xoauth2]),
+    };
+    let creds = Credentials::new(smtp.username.trim().to_string(), secret);
     let builder = if smtp.port == 465 {
         AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp.host)
     } else {
         AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(&smtp.host)
     }
     .map_err(|e| AppError::msg(format!("Serveur SMTP invalide : {e}")))?;
-    let transport = builder.port(smtp.port).credentials(creds).build();
+    let transport = builder.port(smtp.port).credentials(creds).authentication(mechanisms).build();
     transport
         .send(message)
         .await
@@ -86,7 +105,16 @@ mod tests {
     use super::*;
 
     fn smtp() -> SmtpSettings {
-        SmtpSettings { host: "smtp.gmail.com".into(), port: 587, username: "camille@exemple.fr".into(), from_name: Some("Camille Martin".into()) }
+        SmtpSettings {
+            host: "smtp.gmail.com".into(),
+            port: 587,
+            username: "camille@exemple.fr".into(),
+            from_name: Some("Camille Martin".into()),
+            auth: None,
+            provider: None,
+            oauth_client_id: None,
+            oauth_client_secret: None,
+        }
     }
 
     #[test]

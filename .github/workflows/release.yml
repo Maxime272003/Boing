@@ -25,16 +25,30 @@ jobs:
         with:
           workspaces: src-tauri
       - run: npm ci
+      # Sans clé de signature dans les secrets, on construit quand même l'installeur (sans mises à jour automatiques).
+      - name: Mises à jour signées si la clé est disponible
+        shell: bash
+        env:
+          HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != "true" ]; then
+            echo "::warning::TAURI_SIGNING_PRIVATE_KEY absent : installeur créé sans fichiers de mise à jour."
+            node -e "const f='src-tauri/tauri.conf.json';const c=require('./'+f);c.bundle.createUpdaterArtifacts=false;require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
+          fi
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Clé de signature des mises à jour (voir README, « Mises à jour automatiques »)
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Facultatif : identifiants OAuth intégrés à l'app (connexion Gmail / Outlook sans les saisir)
+          BOING_GOOGLE_CLIENT_ID: ${{ secrets.BOING_GOOGLE_CLIENT_ID }}
+          BOING_GOOGLE_CLIENT_SECRET: ${{ secrets.BOING_GOOGLE_CLIENT_SECRET }}
+          BOING_MICROSOFT_CLIENT_ID: ${{ secrets.BOING_MICROSOFT_CLIENT_ID }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Boing ${{ github.ref_name }}'
           releaseBody: 'Télécharge le fichier « Boing_…_x64-setup.exe » ci-dessous et lance-le. Les versions déjà installées se mettent à jour toutes seules.'
           releaseDraft: false
           prerelease: false
-          includeUpdaterJson: true
+          includeUpdaterJson: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}

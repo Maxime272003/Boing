@@ -142,7 +142,7 @@ export interface CvContent {
   languages: string[];
 }
 
-export type CvTemplate = 'sobre' | 'moderne';
+export type CvTemplate = 'sobre' | 'moderne' | 'colonnes';
 export type Tone = 'professionnel' | 'chaleureux' | 'direct';
 export type LetterLength = 'courte' | 'standard' | 'detaillee';
 
@@ -198,6 +198,10 @@ export interface SmtpSettings {
   port: number;
   username: string;
   fromName: string;
+  /** Mot de passe d'application, ou connexion au compte Google / Microsoft. */
+  auth: 'password' | 'oauth';
+  oauthClientId: string;
+  oauthClientSecret: string;
 }
 
 export interface Settings {
@@ -223,7 +227,8 @@ export type SecretName =
   | 'ft_client_secret'
   | 'adzuna_app_id'
   | 'adzuna_app_key'
-  | 'smtp_password';
+  | 'smtp_password'
+  | 'smtp_oauth_refresh';
 
 export type SecretStatus = Record<SecretName, boolean>;
 

@@ -196,3 +196,31 @@ describe('garde-fou contre les offres piégées', () => {
     expect(changes[0].op).toEqual({ kind: 'summary', value: 'Accroche honnête.' });
   });
 });
+
+import { applyChangesTraced, editAt } from '../src/lib/cv';
+
+describe('édition directe du CV', () => {
+  it('trace l’origine des missions', async () => {
+    const p = await camille();
+    const changes = await adaptCv(ctx, p, FIXTURE_OFFERS[0], null);
+    const { cv, trace } = applyChangesTraced(p, changes);
+    expect(trace.summary).toBe('c1');
+    expect(trace.bullets[0][2]).toEqual({ orig: 2, changeId: 'c2' });
+    expect(trace.bullets[0][4]).toEqual({ orig: null, changeId: 'c3' });
+    expect(cv.experiences[0].bullets[4]).toBe('Classement et archivage numérique des dossiers');
+  });
+
+  it('met à jour la modification existante ou en crée une', async () => {
+    const p = await camille();
+    let changes = await adaptCv(ctx, p, FIXTURE_OFFERS[0], null);
+    changes = editAt(p, changes, { kind: 'summary' }, 'Mon accroche à moi.');
+    expect(changes).toHaveLength(4);
+    expect(applyChanges(p, changes).summary).toBe('Mon accroche à moi.');
+    changes = editAt(p, changes, { kind: 'bullet', exp: 1, pos: 0 }, 'Accueil sur salons (jusqu’à 2 000 visiteurs par jour)');
+    expect(changes).toHaveLength(5);
+    expect(changes[4]).toMatchObject({ title: 'Modifié à la main', op: { kind: 'bullet', exp: 1, index: 0 } });
+    expect(applyChanges(p, changes).experiences[1].bullets[0]).toContain('2 000 visiteurs');
+    changes = editAt(p, changes, { kind: 'title' }, 'Assistante de direction');
+    expect(applyChanges(p, changes).title).toBe('Assistante de direction');
+  });
+});

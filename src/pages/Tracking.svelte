@@ -6,6 +6,7 @@
   import type { Application, AppStatus, SearchKind } from '$lib/types';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
+  import Stats from '../components/Stats.svelte';
 
   const COLS: { id: AppStatus; name: string; dot: string }[] = [
     { id: 'draft', name: 'À envoyer', dot: '#71717a' },
@@ -224,6 +225,7 @@
         {/each}
       </div>
     </div>
+    {#if stats.sent}<Stats apps={store.applications} />{/if}
   {/if}
 </div>
 
@@ -240,7 +242,7 @@
       <button class="btn" onclick={() => (relance = null)}>Fermer</button>
       {#if relance && relance.app.mail.to}
         <button class="btn" disabled={relance.loading} onclick={() => sendRelance(false)}>Ouvrir dans ma messagerie</button>
-        <button class="btn primary" disabled={relance.loading || !store.secrets.smtp_password} onclick={() => sendRelance(true)}>Envoyer</button>
+        <button class="btn primary" disabled={relance.loading || !store.mailReady} onclick={() => sendRelance(true)}>Envoyer</button>
       {/if}
     {/snippet}
   </Modal>

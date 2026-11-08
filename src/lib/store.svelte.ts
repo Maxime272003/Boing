@@ -36,7 +36,7 @@ export function defaultSettings(): Settings {
     monthlyTokenCap: 2_000_000,
     blockOverCap: true,
     usage: { month: currentMonth(), inputTokens: 0, outputTokens: 0, calls: 0 },
-    smtp: { provider: 'gmail', host: 'smtp.gmail.com', port: 587, username: '', fromName: '' },
+    smtp: { provider: 'gmail', host: 'smtp.gmail.com', port: 587, username: '', fromName: '', auth: 'password', oauthClientId: '', oauthClientSecret: '' },
     fetchEvery: 'daily',
     archiveAfterDays: 30,
     defaultFollowUpDays: 7
@@ -76,7 +76,8 @@ const EMPTY_SECRETS: SecretStatus = {
   ft_client_secret: false,
   adzuna_app_id: false,
   adzuna_app_key: false,
-  smtp_password: false
+  smtp_password: false,
+  smtp_oauth_refresh: false
 };
 
 const norm = (s: string) =>
@@ -165,6 +166,13 @@ class AppStore {
     );
   }
 
+  /** L'envoi depuis l'app est-il prêt (adresse + mot de passe ou connexion) ? */
+  get mailReady(): boolean {
+    const m = this.settings.smtp;
+    if (!m.username) return false;
+    return m.auth === 'oauth' && m.provider !== 'autre' ? this.secrets.smtp_oauth_refresh : this.secrets.smtp_password;
+  }
+
   get activeSources(): SourceId[] {
     const out: SourceId[] = [];
     if (this.secrets.ft_client_id && this.secrets.ft_client_secret) out.push('france_travail');
@@ -194,6 +202,7 @@ class AppStore {
     ]);
     this.profile = profile ? { ...emptyProfile(), ...profile } : null;
     const s = { ...defaultSettings(), ...(settings ?? {}) };
+    s.smtp = { ...defaultSettings().smtp, ...s.smtp };
     if (s.usage.month !== currentMonth()) s.usage = { month: currentMonth(), inputTokens: 0, outputTokens: 0, calls: 0 };
     this.settings = s;
     this.searches = searches.map((x) => ({ ...x, kind: x.kind ?? 'career' }));

@@ -100,7 +100,76 @@ function heading(c: Ctx, label: string, template: CvTemplate) {
   c.y -= 8;
 }
 
+/** Modèle deux colonnes : coordonnées, compétences, langues et formation à gauche ; le parcours à droite. */
+async function renderColumns(cv: CvContent): Promise<Uint8Array> {
+  const c = await setup();
+  c.doc.setTitle(pdfSafe(`CV — ${cv.fullName}`));
+  c.doc.setCreator('Boing');
+  const sideW = 168;
+  const gap = 26;
+  const top = A4[1] - c.margin;
+  c.page.drawRectangle({ x: 0, y: 0, width: c.margin + sideW + gap / 2, height: A4[1], color: rgb(0.953, 0.953, 0.94) });
+
+  // Colonne de gauche
+  const side = { x: c.margin, width: sideW };
+  const sideHead = (label: string) => {
+    c.y -= 8;
+    text(c, label.toUpperCase(), { ...side, font: c.bold, size: 9, color: ACCENT, gap: 2 });
+  };
+  text(c, cv.fullName, { ...side, font: c.bold, size: 18, gap: 2 });
+  text(c, cv.title, { ...side, size: 11, color: ACCENT, gap: 8 });
+  sideHead('Contact');
+  for (const l of cv.contact) text(c, l, { ...side, size: 9.5, color: MUTED });
+  if (cv.skills.length) {
+    sideHead('Compétences');
+    for (const sk of cv.skills) text(c, sk, { ...side, size: 9.5 });
+  }
+  if (cv.languages.length) {
+    sideHead('Langues');
+    for (const l of cv.languages) text(c, l, { ...side, size: 9.5 });
+  }
+  if (cv.education.length) {
+    sideHead('Formation');
+    for (const e of cv.education) text(c, [e.degree, e.school, e.year].filter(Boolean).join(' — '), { ...side, size: 9.5, gap: 4 });
+  }
+
+  // Colonne principale (repart du haut de la première page)
+  c.page = c.doc.getPage(0);
+  c.y = top;
+  const mainX = c.margin + sideW + gap;
+  const main = { x: mainX, width: A4[0] - c.margin - mainX };
+  const mainHead = (label: string) => {
+    ensure(c, 40);
+    c.y -= 6;
+    c.page.drawText(pdfSafe(label.toUpperCase()), { x: mainX, y: c.y - 10, size: 10, font: c.bold, color: ACCENT });
+    c.y -= 15;
+    c.page.drawLine({ start: { x: mainX, y: c.y }, end: { x: mainX + main.width, y: c.y }, thickness: 1, color: ACCENT });
+    c.y -= 8;
+  };
+  if (cv.summary) {
+    mainHead('Profil');
+    text(c, cv.summary, { ...main, size: 10.5, gap: 6 });
+  }
+  if (cv.experiences.length) {
+    mainHead('Expérience');
+    for (const e of cv.experiences) {
+      ensure(c, 40);
+      text(c, `${e.role} — ${e.company}`, { ...main, font: c.bold, size: 11 });
+      const dates = [e.start, e.end].filter(Boolean).join(' – ');
+      if (dates) text(c, dates, { ...main, size: 9.5, color: MUTED, gap: 1 });
+      for (const b of e.bullets) {
+        ensure(c, 14);
+        c.page.drawText('•', { x: mainX + 2, y: c.y - 10, size: 10, font: c.regular, color: MUTED });
+        text(c, b, { x: mainX + 14, width: main.width - 14, size: 10 });
+      }
+      c.y -= 6;
+    }
+  }
+  return c.doc.save();
+}
+
 export async function renderCv(cv: CvContent, template: CvTemplate = 'sobre'): Promise<Uint8Array> {
+  if (template === 'colonnes') return renderColumns(cv);
   const c = await setup();
   c.doc.setTitle(pdfSafe(`CV — ${cv.fullName}`));
   c.doc.setCreator('Boing');

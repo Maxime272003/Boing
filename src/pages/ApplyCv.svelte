@@ -3,7 +3,7 @@
   import { store } from '$lib/store.svelte';
   import { href, router } from '$lib/router.svelte';
   import { adaptCv } from '$lib/ai/engine';
-  import { afterOf, applyChanges, baseCv, beforeOf } from '$lib/cv';
+  import { afterOf, applyChanges, applyChangesTraced, baseCv, beforeOf, editAt, type EditTarget } from '$lib/cv';
   import { cvPdf, fileNames } from '$lib/documents';
   import type { Application, CvChange } from '$lib/types';
   import ApplyHeader from '../components/ApplyHeader.svelte';
@@ -25,24 +25,14 @@
     const changed = new Set<string>();
     const removed = new Set<string>();
     if (!app) return { changed, removed };
-    const added: Record<number, number> = {};
+    const { trace } = applyChangesTraced(profile, app.cvChanges);
+    if (trace.title) changed.add('title'), removed.add('title');
+    if (trace.summary) changed.add('summary'), removed.add('summary');
+    trace.bullets.forEach((row, i) => row.forEach((b, j) => b.changeId && changed.add(`b-${i}-${j}`)));
     for (const c of app.cvChanges.filter((c) => c.accepted)) {
       const op = c.op;
-      if (op.kind === 'hide_bullet') {
-        removed.add(`b-${op.exp}-${op.index}`);
-      } else if (op.kind === 'bullet') {
-        if (op.index === null) {
-          const n = (added[op.exp] = (added[op.exp] ?? 0) + 1);
-          changed.add(`b-${op.exp}-${profile.experiences[op.exp].bullets.length + n - 1}`);
-        } else {
-          changed.add(`b-${op.exp}-${op.index}`);
-          removed.add(`b-${op.exp}-${op.index}`);
-        }
-      } else {
-        changed.add(op.kind);
-        // Un nouvel ordre des compétences ne retire rien : on ne barre pas l'original.
-        if (op.kind !== 'skills') removed.add(op.kind);
-      }
+      if (op.kind === 'skills') changed.add('skills');
+      if (op.kind === 'hide_bullet' || (op.kind === 'bullet' && op.index !== null)) removed.add(`b-${op.exp}-${op.index}`);
     }
     return { changed, removed };
   });
@@ -70,6 +60,12 @@
   onMount(() => {
     if (app && !app.cvChanges.length && store.aiReady) void run();
   });
+
+  async function inlineEdit(target: EditTarget, value: string) {
+    if (!app) return;
+    app.cvChanges = editAt(profile, $state.snapshot(app.cvChanges) as CvChange[], target, value);
+    await persist();
+  }
 
   async function setAll(v: boolean) {
     if (!app) return;
@@ -137,8 +133,8 @@
         <CvPreview cv={original} removed={marks.removed} />
       </section>
       <section class="col" aria-labelledby="adap">
-        <h2 id="adap" class="section-title" style="color:var(--good)">Version adaptée</h2>
-        <CvPreview cv={adapted} changed={marks.changed} accent />
+        <div class="spread"><h2 id="adap" class="section-title" style="color:var(--good)">Version adaptée</h2><span class="meta">Clique sur un texte pour le modifier</span></div>
+        <CvPreview cv={adapted} changed={marks.changed} accent onedit={inlineEdit} />
       </section>
       <aside class="col narrow" aria-labelledby="mods">
         <h2 id="mods" class="section-title">Modifications</h2>
@@ -184,6 +180,7 @@
           <select class="select input" style="height:40px;width:auto" bind:value={app.cvTemplate} onchange={persist}>
             <option value="sobre">Sobre</option>
             <option value="moderne">Moderne</option>
+            <option value="colonnes">Deux colonnes</option>
           </select>
         </label>
         <button class="btn" onclick={run} disabled={busy || !store.aiReady}>Régénérer</button>

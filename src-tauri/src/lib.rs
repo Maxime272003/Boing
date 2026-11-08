@@ -4,6 +4,7 @@ mod claude;
 mod db;
 mod error;
 mod mail;
+mod oauth;
 mod secrets;
 mod sources;
 
@@ -76,6 +77,11 @@ fn data_dir(state: tauri::State<AppState>) -> String {
     state.data_dir.display().to_string()
 }
 
+#[tauri::command]
+fn data_encrypted(state: tauri::State<AppState>) -> bool {
+    state.db.is_encrypted()
+}
+
 // ---------- Secrets ----------
 
 #[tauri::command]
@@ -129,10 +135,44 @@ async fn claude_complete(
 
 // ---------- E-mail ----------
 
+fn oauth_client(provider: oauth::Provider, id: Option<String>, secret: Option<String>) -> (String, Option<String>) {
+    let (bid, bsec) = provider.builtin_client();
+    let id = id.filter(|s| !s.trim().is_empty()).or(bid.map(String::from)).unwrap_or_default();
+    let secret = secret.filter(|s| !s.trim().is_empty()).or(bsec.map(String::from));
+    (id, secret)
+}
+
 #[tauri::command]
-async fn send_mail(smtp: mail::SmtpSettings, mail: mail::OutgoingMail) -> AppResult<()> {
-    let password = secrets::require("smtp_password", "Mot de passe d'application")?;
-    mail::send(&smtp, &password, &mail).await
+async fn send_mail(state: tauri::State<'_, AppState>, smtp: mail::SmtpSettings, mail: mail::OutgoingMail) -> AppResult<()> {
+    let auth = if smtp.auth.as_deref() == Some("oauth") {
+        let provider = oauth::Provider::parse(smtp.provider.as_deref().unwrap_or(""))?;
+        let refresh = secrets::require("smtp_oauth_refresh", "Connexion à la messagerie")?;
+        let (id, secret) = oauth_client(provider, smtp.oauth_client_id.clone(), smtp.oauth_client_secret.clone());
+        mail::SmtpAuth::OAuthToken(oauth::access_token(&state.http, provider, &id, secret.as_deref(), &refresh).await?)
+    } else {
+        mail::SmtpAuth::Password(secrets::require("smtp_password", "Mot de passe d'application")?)
+    };
+    mail::send(&smtp, auth, &mail).await
+}
+
+/// Ouvre le navigateur pour se connecter à Gmail ou Outlook, et garde le jeton dans le coffre.
+#[tauri::command]
+async fn oauth_connect(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    provider: String,
+    client_id: Option<String>,
+    client_secret: Option<String>,
+) -> AppResult<()> {
+    use tauri_plugin_opener::OpenerExt;
+    let p = oauth::Provider::parse(&provider)?;
+    let (id, secret) = oauth_client(p, client_id, client_secret);
+    let login = oauth::start(p, &id, secret.as_deref()).await?;
+    app.opener()
+        .open_url(login.url.clone(), None::<&str>)
+        .map_err(|e| AppError::msg(format!("Impossible d'ouvrir le navigateur : {e}")))?;
+    let refresh = oauth::finish(&state.http, login).await?;
+    secrets::set("smtp_oauth_refresh", &refresh)
 }
 
 // ---------- Fichiers ----------
@@ -179,7 +219,8 @@ pub fn run() {
         .setup(|app| {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
-            let db = Db::open(&data_dir.join("boing.db"))?;
+            let key = secrets::database_key(&data_dir);
+            let db = Db::open(&data_dir.join("boing.db"), Some(&key))?;
             let http = reqwest::Client::builder()
                 .user_agent(concat!("Boing/", env!("CARGO_PKG_VERSION")))
                 .timeout(std::time::Duration::from_secs(90))
@@ -197,12 +238,14 @@ pub fn run() {
             backup_import,
             data_wipe,
             data_dir,
+            data_encrypted,
             secret_set,
             secret_status,
             search_communes,
             fetch_offers,
             claude_complete,
             send_mail,
+            oauth_connect,
             save_document,
             read_file_base64,
         ])

@@ -8,7 +8,7 @@ import { fakeClaude } from './fake-claude';
 
 const KEY = 'boing-mock-db';
 const SECRET_KEY = 'boing-mock-secrets';
-const SECRETS: SecretName[] = ['claude_api_key', 'ft_client_id', 'ft_client_secret', 'adzuna_app_id', 'adzuna_app_key', 'smtp_password'];
+const SECRETS: SecretName[] = ['claude_api_key', 'ft_client_id', 'ft_client_secret', 'adzuna_app_id', 'adzuna_app_key', 'smtp_password', 'smtp_oauth_refresh'];
 
 type Store = Record<string, Record<string, { data: any; updatedAt: number }>>;
 
@@ -164,12 +164,24 @@ export function createMockBackend(): Backend {
 
     async sendMail(smtp, mail) {
       await wait(inspector.latencyMs);
-      if (!loadSecrets().smtp_password) throw new Error("Mot de passe d'application manquant : renseigne-le dans Paramètres.");
+      if (smtp.auth === 'oauth') {
+        if (!loadSecrets().smtp_oauth_refresh) throw new Error('Connexion à la messagerie manquante : connecte-toi dans Paramètres.');
+      } else if (!loadSecrets().smtp_password) {
+        throw new Error("Mot de passe d'application manquant : renseigne-le dans Paramètres.");
+      }
       if (!smtp.username.includes('@')) throw new Error("Adresse d'expédition invalide (Paramètres › Envoi d'e-mails)");
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(mail.to.trim())) throw new Error(`Adresse du destinataire invalide : ${mail.to}`);
       inspector.outbox.push({ smtp, mail, at: new Date().toISOString() });
     },
 
+    async oauthConnect(provider, clientId) {
+      await wait(inspector.latencyMs);
+      if (!clientId.trim()) throw new Error("Identifiant d'application OAuth manquant : renseigne-le dans Paramètres › Envoi d'e-mails (voir le README).");
+      inspector.opened.push(`oauth:${provider}`);
+      const s = loadSecrets();
+      s.smtp_oauth_refresh = `mock-refresh-${provider}`;
+      localStorage.setItem(SECRET_KEY, JSON.stringify(s));
+    },
     async saveDocument(folder, filename, bytes) {
       const path = `C:\\Users\\vous\\AppData\\Roaming\\app.boing.desktop\\documents\\${folder}\\${filename}`;
       const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
@@ -190,6 +202,9 @@ export function createMockBackend(): Backend {
     },
     async dataDir() {
       return 'C:\\Users\\vous\\AppData\\Roaming\\app.boing.desktop';
+    },
+    async dataEncrypted() {
+      return true;
     },
     async exportBackup() {
       const blob = new Blob([JSON.stringify(load(), null, 2)], { type: 'application/json' });

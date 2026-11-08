@@ -27,7 +27,7 @@
   const warnings = $derived(app ? findUnexpected(`${app.letter}\n${app.mail.subject}\n${app.mail.body}`, profile, app.offer) : []);
   let verified = $state(false);
   const names = $derived(app ? fileNames(app, profile) : null);
-  const smtpReady = $derived(!!store.settings.smtp.username && store.secrets.smtp_password);
+  const smtpReady = $derived(store.mailReady);
   const alreadySent = $derived(app ? app.status !== 'draft' : false);
 
   const modes: { id: SendMode; title: string; desc: string }[] = [

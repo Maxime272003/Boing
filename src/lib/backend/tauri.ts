@@ -24,6 +24,7 @@ export const tauriBackend: Backend = {
   fetchOffers: (source, criteria) => invoke('fetch_offers', { source, criteria }),
   claude: (request) => invoke('claude_complete', { request }),
   sendMail: (smtp, mail) => invoke('send_mail', { smtp, mail }),
+  oauthConnect: (provider, clientId, clientSecret) => invoke('oauth_connect', { provider, clientId, clientSecret }),
 
   saveDocument: (folder, filename, bytes) =>
     invoke('save_document', { folder, filename, contentBase64: toBase64(bytes) }),
@@ -31,6 +32,7 @@ export const tauriBackend: Backend = {
   reveal: (path) => revealItemInDir(path),
   openFile: (path) => openPath(path),
   dataDir: () => invoke('data_dir'),
+  dataEncrypted: () => invoke('data_encrypted'),
   async exportBackup() {
     const path = await save({
       defaultPath: `boing-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`,

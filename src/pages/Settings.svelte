@@ -14,11 +14,30 @@
     ft_client_secret: '',
     adzuna_app_id: '',
     adzuna_app_key: '',
-    smtp_password: ''
+    smtp_password: '',
+    smtp_oauth_refresh: ''
   });
+  let connecting = $state(false);
+
+  async function connectOAuth() {
+    if (smtp.provider === 'autre') return;
+    connecting = true;
+    try {
+      await store.saveSettings({ smtp: $state.snapshot(smtp) });
+      await store.backend.oauthConnect(smtp.provider, smtp.oauthClientId, smtp.oauthClientSecret);
+      store.secrets = { ...store.secrets, ...(await store.backend.secretStatus()) };
+      store.toast(`Connecté à ${smtp.provider === 'gmail' ? 'Gmail' : 'Outlook'}`, 'success');
+    } catch (e) {
+      store.toast(store.errorText(e), 'error');
+      connecting = false;
+      return;
+    }
+    connecting = false;
+  }
   let smtp = $state<SmtpSettings>(structuredClone($state.snapshot(store.settings.smtp)));
   let s = $state<Settings>(structuredClone($state.snapshot(store.settings)));
   let dataDir = $state('');
+  let encrypted = $state(false);
   let version = $state('');
   let update = $state<UpdateInfo | null>(null);
   let checking = $state(false);
@@ -26,6 +45,7 @@
 
   onMount(async () => {
     dataDir = await store.backend.dataDir();
+    encrypted = await store.backend.dataEncrypted();
     version = await store.backend.appVersion();
   });
 
@@ -79,6 +99,7 @@
   }
 
   async function saveSmtp() {
+    if (smtp.provider === 'autre') smtp.auth = 'password';
     await store.saveSettings({ smtp: $state.snapshot(smtp) });
     if (drafts.smtp_password.trim()) await saveSecrets(['smtp_password'], "Mot de passe d'application");
     else store.toast("Réglages d'envoi enregistrés", 'success');
@@ -227,7 +248,7 @@
       </section>
 
       <section id="mail" class="card stack" style="--gap:14px" aria-labelledby="h-mail">
-        <div class="spread"><h2 id="h-mail">Envoi d'e-mails</h2>{@render status(!!store.settings.smtp.username && store.secrets.smtp_password)}</div>
+        <div class="spread"><h2 id="h-mail">Envoi d'e-mails</h2>{@render status(store.mailReady)}</div>
         <div class="grid3">
           <label class="field">Messagerie
             <select class="select input" bind:value={smtp.provider} onchange={() => { if (smtp.provider !== 'autre') { smtp.host = PRESETS[smtp.provider].host; smtp.port = PRESETS[smtp.provider].port; } }}>
@@ -240,11 +261,42 @@
             <label class="field">Serveur SMTP<input class="input" bind:value={smtp.host} placeholder="smtp.exemple.fr" /></label>
             <label class="field">Port<input class="input" type="number" bind:value={smtp.port} /></label>
           {/if}
-          <label class="field">Mot de passe d'application<input class="input" type="password" autocomplete="off" placeholder={store.secrets.smtp_password ? '•••••••• (enregistré)' : ''} bind:value={drafts.smtp_password} /></label>
+          {#if smtp.auth === 'password' || smtp.provider === 'autre'}
+            <label class="field">Mot de passe d'application<input class="input" type="password" autocomplete="off" placeholder={store.secrets.smtp_password ? '•••••••• (enregistré)' : ''} bind:value={drafts.smtp_password} /></label>
+          {/if}
         </div>
-        <p class="hint">Gmail et Outlook demandent un « mot de passe d'application » (pas ton mot de passe habituel), à créer dans la sécurité de ton compte.</p>
+        {#if smtp.provider !== 'autre'}
+          <div class="field">Connexion
+            <div class="row" style="font-weight:400" role="radiogroup" aria-label="Mode de connexion">
+              <button type="button" role="radio" class="chip" class:on={smtp.auth === 'oauth'} aria-checked={smtp.auth === 'oauth'} onclick={() => (smtp.auth = 'oauth')}>Se connecter avec {smtp.provider === 'gmail' ? 'Google' : 'Microsoft'}</button>
+              <button type="button" role="radio" class="chip" class:on={smtp.auth === 'password'} aria-checked={smtp.auth === 'password'} onclick={() => (smtp.auth = 'password')}>Mot de passe d'application</button>
+            </div>
+          </div>
+        {/if}
+        {#if smtp.auth === 'oauth' && smtp.provider !== 'autre'}
+          <div class="oauth stack" style="--gap:10px">
+            <div class="spread">
+              <span style="font-size:14px">{#if store.secrets.smtp_oauth_refresh}<span class="badge good">● Compte connecté</span>{:else}Pas encore connecté{/if}</span>
+              <div class="row">
+                {#if store.secrets.smtp_oauth_refresh}<button class="btn ghost" onclick={() => removeSecrets(['smtp_oauth_refresh'])}>Déconnecter</button>{/if}
+                <button class="btn primary" onclick={connectOAuth} disabled={connecting || !smtp.username}>
+                  {#if connecting}<span class="spinner"></span>En attente du navigateur…{:else}Se connecter avec {smtp.provider === 'gmail' ? 'Google' : 'Microsoft'}{/if}
+                </button>
+              </div>
+            </div>
+            <details>
+              <summary class="hint" style="cursor:pointer">Identifiants de l'application (à créer une seule fois, voir le README)</summary>
+              <div class="grid2" style="margin-top:10px">
+                <label class="field">Identifiant client OAuth<input class="input" autocomplete="off" bind:value={smtp.oauthClientId} placeholder={smtp.provider === 'gmail' ? '….apps.googleusercontent.com' : 'GUID de l’application Azure'} /></label>
+                {#if smtp.provider === 'gmail'}<label class="field">Secret client (Google)<input class="input" type="password" autocomplete="off" bind:value={smtp.oauthClientSecret} /></label>{/if}
+              </div>
+            </details>
+          </div>
+        {:else}
+          <p class="hint">Gmail et Outlook demandent un « mot de passe d'application » (pas ton mot de passe habituel), à créer dans la sécurité de ton compte.</p>
+        {/if}
         <div class="spread">
-          <button class="btn" onclick={testMail} disabled={!store.secrets.smtp_password || !smtp.username}>M'envoyer un e-mail de test</button>
+          <button class="btn" onclick={testMail} disabled={!(smtp.auth === 'oauth' ? store.secrets.smtp_oauth_refresh : store.secrets.smtp_password) || !smtp.username}>M'envoyer un e-mail de test</button>
           <button class="btn primary" onclick={saveSmtp}>Enregistrer</button>
         </div>
       </section>
@@ -269,6 +321,10 @@
       <section id="donnees" class="card stack" style="--gap:12px" aria-labelledby="h-don">
         <h2 id="h-don">Données</h2>
         <div class="spread"><span style="font-size:14px">Dossier : <code>{dataDir}</code></span><button class="btn" onclick={() => store.backend.reveal(dataDir)}>Ouvrir le dossier</button></div>
+        {#if encrypted}
+          <p class="row" style="--gap:8px;font-size:14px" data-testid="encrypted"><Icon name="lock" size={16} />Profil, offres et candidatures sont chiffrés (AES-256) avec une clé rangée dans le coffre de Windows.</p>
+        {/if}
+        <p class="hint">La sauvegarde exportée n'est pas chiffrée, pour pouvoir la restaurer sur un autre PC : range-la en lieu sûr.</p>
         <div class="row">
           <button class="btn" onclick={exportData}><Icon name="download" size={16} />Exporter une sauvegarde</button>
           <button class="btn" onclick={importData}><Icon name="upload" size={16} />Restaurer</button>
@@ -306,6 +362,7 @@
   .subnav a:hover { background: var(--hover); color: var(--ink); }
   .block { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line-soft); }
   .block.last { border-bottom: 0; padding-bottom: 0; }
+  .oauth { border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: var(--side); }
   .bar { height: 8px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }
   .bar div { height: 100%; background: var(--accent); }
   .line { font-size: 14px; min-height: 44px; }

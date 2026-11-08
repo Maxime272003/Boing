@@ -23,6 +23,13 @@ describe('PDF', () => {
     expect(doc.getPageCount()).toBeGreaterThanOrEqual(1);
     expect(doc.getTitle()).toContain('Camille Martin');
 
+    const cols = await PDFDocument.load(await renderCv({
+      fullName: 'Léa Moreau', title: 'Concept artist', contact: ['Lyon'], summary: 'Accroche.',
+      experiences: [{ role: 'Freelance', company: 'Jeux', start: '2023', end: "Aujourd'hui", bullets: ['Environnements'] }],
+      education: [], skills: ['Photoshop'], languages: ['Anglais (C1)']
+    }, 'colonnes'));
+    expect(cols.getPageCount()).toBe(1);
+
     const letter = await renderLetter({ senderName: 'Camille', senderLines: ['Lyon'], recipient: ['Cabinet'], date: 'Lyon, le 8 novembre 2026', subject: 'candidature' }, 'Madame, Monsieur,\n\nTexte.\n\nCordialement,');
     expect((await PDFDocument.load(letter)).getPageCount()).toBe(1);
   });
