@@ -17,8 +17,10 @@ test.describe('Premier lancement', () => {
     await expect(offers(page).first().getByRole('img', { name: 'Match 92 %' })).toBeVisible();
     await expect(offers(page).first()).toContainText('Très bon match');
 
-    const calls = await mockState<{ task: string; model: string }[]>(page, '(b) => b.claudeCalls');
-    expect(calls[0]).toEqual({ task: 'parse_cv', model: 'claude-sonnet-5-5' });
+    const calls = await mockState<{ task: string; model: string; cached: boolean }[]>(page, '(b) => b.claudeCalls');
+    expect(calls[0]).toMatchObject({ task: 'parse_cv', model: 'claude-sonnet-5-5' });
+    // Profil et consignes en cache pour toutes les analyses
+    expect(calls.filter((c) => c.task === 'analyse').every((c) => c.cached)).toBe(true);
     expect(calls.filter((c) => c.task === 'analyse')).toHaveLength(6);
     expect(calls.find((c) => c.task === 'analyse')?.model).toBe('claude-haiku-5-5');
   });
@@ -62,8 +64,17 @@ test.describe('Liste des offres', () => {
     await page.getByRole('button', { name: /^Masquées · 1/ }).click();
     await expect(offers(page)).toHaveCount(1);
 
-    // Tri par date : l'offre la plus récente d'abord
+    // L'annonce reprise par Adzuna n'apparaît pas en double ; l'offre trop ancienne est archivée
     await page.getByRole('button', { name: /^Toutes/ }).click();
+    await expect(page.getByRole('link', { name: 'Assistante administrative' })).toHaveCount(1);
+    await page.getByRole('button', { name: /^Archivées · 1/ }).click();
+    await expect(offers(page)).toHaveCount(1);
+    await expect(offers(page)).toContainText('Agence Mistral');
+    await offers(page).getByRole('button', { name: 'Ressortir' }).click();
+    await expect(offers(page)).toHaveCount(0);
+
+    // Tri par date : l'offre la plus récente d'abord
+    await page.getByRole('button', { name: /^Toutes · 6/ }).click();
     await page.getByLabel('Trier par').selectOption('date');
     await expect(offers(page).first()).toContainText('Assistante');
   });
@@ -158,9 +169,9 @@ test.describe('Candidature de bout en bout', () => {
     await page.getByRole('link', { name: '3. Envoi' }).click();
     await expect(page.getByRole('radio', { name: /Postuler sur le site/ })).toHaveAttribute('aria-checked', 'true');
     await page.getByRole('button', { name: 'Enregistrer les PDF' }).click();
+    await expect.poll(() => mockState<string[]>(page, '(b) => b.opened.filter((u) => u.startsWith("reveal:"))')).toHaveLength(1);
     await page.getByRole('button', { name: /Ouvrir le formulaire/ }).click();
     const opened = await mockState<string[]>(page, '(b) => b.opened');
-    expect(opened.some((u) => u.startsWith('reveal:'))).toBe(true);
     expect(opened).toContain('https://www.adzuna.fr/details/4455102');
     await page.getByRole('button', { name: "C'est envoyé, ajouter au suivi" }).click();
     await expect(page.getByTestId('col-sent')).toContainText('Clinique des Tilleuls');

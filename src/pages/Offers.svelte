@@ -6,7 +6,7 @@
   import Icon from '../components/Icon.svelte';
   import ScoreBadge from '../components/ScoreBadge.svelte';
 
-  type Filter = 'all' | 'new' | 'good' | 'fav' | 'hidden';
+  type Filter = 'all' | 'new' | 'good' | 'fav' | 'hidden' | 'archived';
   let filter = $state<Filter>('all');
   let sort = $state<'match' | 'date'>('match');
   let q = $state('');
@@ -22,7 +22,8 @@
     new: base.filter((o) => !o.seen).length,
     good: base.filter((o) => (score(o) ?? 0) >= 70).length,
     fav: base.filter((o) => o.favorite).length,
-    hidden: ofKind(store.offers.filter((o) => o.hidden)).length
+    hidden: ofKind(store.offers.filter((o) => o.hidden)).length,
+    archived: ofKind(store.offers.filter((o) => o.archived && !o.hidden)).length
   });
   const kindCounts = $derived({
     career: store.visibleOffers.filter((o) => store.offerKind(o) === 'career').length,
@@ -30,7 +31,12 @@
   });
 
   const list = $derived.by(() => {
-    let l = filter === 'hidden' ? ofKind(store.offers.filter((o) => o.hidden)) : base;
+    let l =
+      filter === 'hidden'
+        ? ofKind(store.offers.filter((o) => o.hidden))
+        : filter === 'archived'
+          ? ofKind(store.offers.filter((o) => o.archived && !o.hidden))
+          : base;
     if (filter === 'new') l = l.filter((o) => !o.seen);
     if (filter === 'good') l = l.filter((o) => (score(o) ?? 0) >= 70);
     if (filter === 'fav') l = l.filter((o) => o.favorite);
@@ -49,7 +55,8 @@
     ['new', 'Nouvelles'],
     ['good', 'Match ≥ 70 %'],
     ['fav', 'Favoris'],
-    ['hidden', 'Masquées']
+    ['hidden', 'Masquées'],
+    ['archived', 'Archivées']
   ];
 
   async function refresh() {
@@ -151,6 +158,9 @@
             <button class="btn icon-btn" aria-label={o.favorite ? 'Retirer des favoris' : 'Ajouter aux favoris'} aria-pressed={!!o.favorite} onclick={() => toggle(o, 'favorite')}>
               <span style:color={o.favorite ? '#b7791f' : 'inherit'}><Icon name="star" /></span>
             </button>
+            {#if o.archived}
+              <button class="btn sm" onclick={() => store.updateOffer({ ...o, archived: false, keep: true })}>Ressortir</button>
+            {/if}
             <button class="btn icon-btn" aria-label={o.hidden ? "Ré-afficher l'offre" : "Masquer l'offre"} onclick={() => toggle(o, 'hidden')}>
               <Icon name={o.hidden ? 'eye' : 'eyeoff'} />
             </button>

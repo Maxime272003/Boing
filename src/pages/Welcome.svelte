@@ -2,7 +2,6 @@
   import { store, emptyProfile, newId } from '$lib/store.svelte';
   import { router } from '$lib/router.svelte';
   import { parseCv } from '$lib/ai/engine';
-  import { extractText } from '$lib/pdf/extract';
   import type { Profile, Search } from '$lib/types';
   import Logo from '../components/Logo.svelte';
   import Icon from '../components/Icon.svelte';
@@ -100,7 +99,7 @@
     const file = (e.currentTarget as HTMLInputElement).files?.[0];
     if (!file) return;
     try {
-      const text = await extractText(file);
+      const text = await (await import('$lib/pdf/extract')).extractText(file);
       await readCvText(text, file.name);
     } catch (err) {
       readError = store.errorText(err);

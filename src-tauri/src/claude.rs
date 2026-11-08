@@ -17,6 +17,8 @@ pub struct CompletionRequest {
     pub system: String,
     pub messages: Vec<Message>,
     pub max_tokens: Option<u32>,
+    #[serde(default)]
+    pub cache_system: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Default, PartialEq)]
@@ -25,13 +27,21 @@ pub struct Completion {
     pub text: String,
     pub input_tokens: u64,
     pub output_tokens: u64,
+    pub cache_read_tokens: u64,
+    pub cache_write_tokens: u64,
 }
 
 pub fn build_body(req: &CompletionRequest) -> Value {
+    // Consignes en cache : réutilisées d'un appel à l'autre (moins cher, plus rapide).
+    let system = if req.cache_system.unwrap_or(false) {
+        json!([{ "type": "text", "text": req.system, "cache_control": { "type": "ephemeral" } }])
+    } else {
+        json!(req.system)
+    };
     json!({
         "model": req.model,
         "max_tokens": req.max_tokens.unwrap_or(4096),
-        "system": req.system,
+        "system": system,
         "messages": req.messages,
     })
 }
@@ -58,6 +68,8 @@ pub fn parse_response(body: &Value) -> AppResult<Completion> {
         text,
         input_tokens: usage.get("input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
         output_tokens: usage.get("output_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+        cache_read_tokens: usage.get("cache_read_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
+        cache_write_tokens: usage.get("cache_creation_input_tokens").and_then(|v| v.as_u64()).unwrap_or(0),
     })
 }
 
@@ -88,11 +100,12 @@ mod tests {
     fn parses_text_and_usage() {
         let body = json!({
             "content": [{"type": "text", "text": "{\"score\":"}, {"type": "text", "text": " 90}"}],
-            "usage": {"input_tokens": 1200, "output_tokens": 80}
+            "usage": {"input_tokens": 1200, "output_tokens": 80, "cache_read_input_tokens": 3000}
         });
         let c = parse_response(&body).unwrap();
         assert_eq!(c.text, "{\"score\": 90}");
         assert_eq!(c.input_tokens, 1200);
+        assert_eq!(c.cache_read_tokens, 3000);
     }
 
     #[test]
@@ -106,11 +119,16 @@ mod tests {
         let req = CompletionRequest {
             model: "claude-haiku-5-5".into(),
             system: "sys".into(),
-            messages: vec![Message { role: "user".into(), content: json!("salut") }],
+            messages: vec![Message {
+                role: "user".into(),
+                content: json!([{"type": "text", "text": "profil", "cache_control": {"type": "ephemeral"}}, {"type": "text", "text": "offre"}]),
+            }],
             max_tokens: None,
+            cache_system: Some(true),
         };
         let b = build_body(&req);
         assert_eq!(b["max_tokens"], 4096);
-        assert_eq!(b["messages"][0]["content"], "salut");
+        assert_eq!(b["system"][0]["cache_control"]["type"], "ephemeral");
+        assert_eq!(b["messages"][0]["content"][1]["text"], "offre");
     }
 }

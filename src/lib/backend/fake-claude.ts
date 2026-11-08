@@ -512,11 +512,16 @@ function followUp(p: Json) {
 
 export async function fakeClaude(req: CompletionRequest, delayMs = 250): Promise<Completion> {
   const task = taskOf(req.system);
+  // Le message peut être un texte ou plusieurs blocs JSON (partie en cache + partie propre à l'appel).
   let payload: Json = {};
-  try {
-    payload = JSON.parse(req.messages[req.messages.length - 1]?.content ?? '{}');
-  } catch {
-    payload = {};
+  const content = req.messages[req.messages.length - 1]?.content ?? '{}';
+  const texts = typeof content === 'string' ? [content] : content.map((b) => b.text);
+  for (const t of texts) {
+    try {
+      Object.assign(payload, JSON.parse(t));
+    } catch {
+      /* message libre */
+    }
   }
   let out: unknown;
   switch (task) {

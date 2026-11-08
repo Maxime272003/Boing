@@ -16,7 +16,7 @@ export interface MockInspector {
   outbox: { smtp: SmtpSettings; mail: OutgoingMail; at: string }[];
   documents: { path: string; bytes: number; url: string }[];
   opened: string[];
-  claudeCalls: { task: string; model: string }[];
+  claudeCalls: { task: string; model: string; cached: boolean }[];
   latencyMs: number;
   reset(): void;
 }
@@ -154,7 +154,11 @@ export function createMockBackend(): Backend {
 
     async claude(request) {
       if (!loadSecrets().claude_api_key) throw new Error('Clé API Claude manquante : renseigne-la dans Paramètres.');
-      inspector.claudeCalls.push({ task: request.system.match(/TÂCHE: (\w+)/)?.[1] ?? '?', model: request.model });
+      inspector.claudeCalls.push({
+        task: request.system.match(/TÂCHE: (\w+)/)?.[1] ?? '?',
+        model: request.model,
+        cached: !!request.cacheSystem && Array.isArray(request.messages[0]?.content) && !!request.messages[0].content[0]?.cache_control
+      });
       return fakeClaude(request, inspector.latencyMs);
     },
 

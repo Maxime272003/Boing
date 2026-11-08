@@ -4,6 +4,7 @@ import { getBackend, type Backend } from './backend';
 import * as ai from './ai/engine';
 import type {
   Analysis,
+  Completion,
   Application,
   Criteria,
   LetterTemplate,
@@ -37,6 +38,7 @@ export function defaultSettings(): Settings {
     usage: { month: currentMonth(), inputTokens: 0, outputTokens: 0, calls: 0 },
     smtp: { provider: 'gmail', host: 'smtp.gmail.com', port: 587, username: '', fromName: '' },
     fetchEvery: 'daily',
+    archiveAfterDays: 30,
     defaultFollowUpDays: 7
   };
 }
@@ -76,6 +78,27 @@ const EMPTY_SECRETS: SecretStatus = {
   adzuna_app_key: false,
   smtp_password: false
 };
+
+const norm = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/\((h\/f|f\/h)\)|\bh\/f\b/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+
+/** Même poste, même entreprise : une seule offre, même si elle vient de deux sources. */
+export function dedupeKey(o: Pick<Offer, 'title' | 'company'>): string {
+  return `${norm(o.title)}|${norm(o.company)}`;
+}
+
+/** Offre trop ancienne et sans suite : à ranger dans les archives. */
+export function shouldArchive(o: Offer, days: number, hasApplication: boolean, now = Date.now()): boolean {
+  if (o.archived || o.keep || o.favorite || hasApplication || days <= 0) return false;
+  const date = new Date(o.publishedAt ?? o.fetchedAt ?? now).getTime();
+  return now - date > days * 86400_000;
+}
 
 /** Les offres qui ne respectent pas les critères ne sont même pas gardées. */
 export function passesCriteria(o: Offer, s: Search): boolean {
@@ -128,7 +151,7 @@ class AppStore {
   }
 
   get visibleOffers() {
-    return this.offers.filter((o) => !o.hidden);
+    return this.offers.filter((o) => !o.hidden && !o.archived);
   }
 
   get pendingAnalysis() {
@@ -179,6 +202,17 @@ class AppStore {
     this.applications = applications.map((a) => ({ ...a, kind: a.kind ?? 'career' }));
     this.letters = letters;
     this.secrets = { ...EMPTY_SECRETS, ...secrets };
+    await this.archiveOld();
+  }
+
+  /** Range les offres trop anciennes (ni favorites, ni candidatées). */
+  async archiveOld() {
+    const days = this.settings.archiveAfterDays;
+    for (const o of this.offers) {
+      if (shouldArchive(o, days, !!this.applicationFor(o.id))) {
+        await this.updateOffer({ ...$state.snapshot(o), archived: true } as Offer);
+      }
+    }
   }
 
   toast(text: string, kind: Toast['kind'] = 'info') {
@@ -193,17 +227,28 @@ class AppStore {
 
   // ---------- IA ----------
 
+  // Les analyses tournent en parallèle : on comptabilise les tokens l'un après l'autre.
+  private usageChain: Promise<void> = Promise.resolve();
+
   aiContext(): ai.AiContext {
     return {
       backend: this.backend,
       settings: this.settings,
-      onUsage: async (c) => {
-        const u = this.settings.usage;
-        await this.saveSettings({
-          usage: { ...u, inputTokens: u.inputTokens + c.inputTokens, outputTokens: u.outputTokens + c.outputTokens, calls: u.calls + 1 }
-        });
-      }
+      onUsage: (c) => (this.usageChain = this.usageChain.then(() => this.addUsage(c)))
     };
+  }
+
+  private async addUsage(c: Completion) {
+    const u = this.settings.usage;
+    await this.saveSettings({
+      usage: {
+        ...u,
+        inputTokens: u.inputTokens + c.inputTokens + (c.cacheWriteTokens ?? 0),
+        outputTokens: u.outputTokens + c.outputTokens,
+        cacheReadTokens: (u.cacheReadTokens ?? 0) + (c.cacheReadTokens ?? 0),
+        calls: u.calls + 1
+      }
+    });
   }
 
   // ---------- Profil, réglages, secrets ----------
@@ -268,8 +313,19 @@ class AppStore {
           try {
             const found = await this.backend.fetchOffers(src, criteriaOf(search, firstRun ? 31 : 7));
             const now = new Date().toISOString();
-            const keep = found.filter((o) => passesCriteria(o, search)).map((o) => ({ ...o, searchId: search.id, kind: search.kind, fetchedAt: now }));
+            // Une même annonce publiée sur France Travail et sur Adzuna n'est gardée qu'une fois.
+            const keys = new Set(this.offers.map(dedupeKey));
+            const keep = found
+              .filter((o) => passesCriteria(o, search))
+              .filter((o) => {
+                const k = dedupeKey(o);
+                if (keys.has(k) && !this.offers.some((x) => x.id === o.id)) return false;
+                keys.add(k);
+                return true;
+              })
+              .map((o) => ({ ...o, searchId: search.id, kind: search.kind, fetchedAt: now }));
             added += await this.backend.insertNew('offers', keep);
+            this.offers = await this.backend.list<Offer>('offers');
           } catch (e) {
             errors.push(this.errorText(e));
           }
@@ -278,6 +334,7 @@ class AppStore {
       }
       await this.saveSettings({ lastFetchAt: new Date().toISOString() });
       this.offers = await this.backend.list<Offer>('offers');
+      await this.archiveOld();
     } finally {
       this.fetching = false;
     }
@@ -288,28 +345,36 @@ class AppStore {
     return { added, errors };
   }
 
-  async analyse(offerIds: string[]) {
+  /** Analyse plusieurs offres, trois à la fois. S'arrête à la première erreur (clé, plafond…). */
+  async analyse(offerIds: string[], concurrency = 3) {
     if (!this.profile) return;
     if (!this.aiReady) {
       this.toast('Ajoute ta clé Claude dans Paramètres pour analyser les offres.', 'error');
       return;
     }
     if (this.analysing) return;
-    this.analysing = { done: 0, total: offerIds.length };
-    try {
-      for (const id of offerIds) {
+    const queue = [...offerIds];
+    let failed = false;
+    this.analysing = { done: 0, total: queue.length };
+    const profile = $state.snapshot(this.profile) as Profile;
+    const worker = async () => {
+      while (queue.length && !failed) {
+        const id = queue.shift()!;
         const offer = this.offers.find((o) => o.id === id);
         if (!offer) continue;
         try {
-          const a = await ai.analyseOffer(this.aiContext(), this.profile, offer, this.offerKind(offer));
+          const a = await ai.analyseOffer(this.aiContext(), profile, $state.snapshot(offer) as Offer, this.offerKind(offer));
           await this.backend.put('analyses', a.id, a);
           this.analyses[a.id] = a;
         } catch (e) {
-          this.toast(this.errorText(e), 'error');
-          break;
+          if (!failed) this.toast(this.errorText(e), 'error');
+          failed = true;
         }
-        this.analysing = { done: this.analysing.done + 1, total: this.analysing.total };
+        if (this.analysing) this.analysing = { done: this.analysing.done + 1, total: this.analysing.total };
       }
+    };
+    try {
+      await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
     } finally {
       this.analysing = null;
     }

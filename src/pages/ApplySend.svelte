@@ -4,6 +4,7 @@
   import { addDays, cleanTitle, posteDe } from '$lib/format';
   import { buildFiles, fileNames } from '$lib/documents';
   import { toBase64 } from '$lib/bytes';
+  import { findUnexpected } from '$lib/ai/guard';
   import type { Application, SendMode } from '$lib/types';
   import ApplyHeader from '../components/ApplyHeader.svelte';
   import Icon from '../components/Icon.svelte';
@@ -23,6 +24,8 @@
   let app = $state<Application | null>(initial());
   let sending = $state(false);
 
+  const warnings = $derived(app ? findUnexpected(`${app.letter}\n${app.mail.subject}\n${app.mail.body}`, profile, app.offer) : []);
+  let verified = $state(false);
   const names = $derived(app ? fileNames(app, profile) : null);
   const smtpReady = $derived(!!store.settings.smtp.username && store.secrets.smtp_password);
   const alreadySent = $derived(app ? app.status !== 'draft' : false);
@@ -97,7 +100,8 @@
     !!app &&
       !sending &&
       (app.mode !== 'smtp' || (smtpReady && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(app.mail.to.trim()))) &&
-      (app.mode === 'site' || !!app.mail.to.trim())
+      (app.mode === 'site' || !!app.mail.to.trim()) &&
+      (!warnings.length || verified)
   );
 </script>
 
@@ -153,6 +157,14 @@
       {/if}
 
       <aside class="stack" style="--gap:14px; flex:1 1 300px; min-width:0">
+        {#if warnings.length}
+          <div class="card stack warnbox" style="--gap:8px" role="alert">
+            <strong>Éléments inattendus</strong>
+            <ul class="list" style="font-size:13px">{#each warnings as w}<li>{w}</li>{/each}</ul>
+            <span class="meta">Ils ne viennent ni de ton profil ni de l'offre. Une annonce peut contenir du texte piégé.</span>
+            <label class="check"><input type="checkbox" bind:checked={verified} />J'ai vérifié, c'est voulu</label>
+          </div>
+        {/if}
         <div class="card stack" style="--gap:8px">
           <h2>Avant d'envoyer</h2>
           <label class="check"><input type="checkbox" bind:checked={app.checks.cv} onchange={persist} />J'ai relu le CV adapté</label>
@@ -189,4 +201,5 @@
   .body { border: 0; outline: 0; resize: vertical; min-height: 220px; padding: 20px; font: inherit; font-size: 15px; line-height: 1.6; background: transparent; color: var(--ink); }
   .atts { padding: 14px 20px; border-top: 1px solid var(--line-soft); }
   .pdf { font-size: 11px; color: var(--bad); }
+  .warnbox { border-color: var(--warn-line); background: var(--warn-soft); color: var(--warn-ink); }
 </style>

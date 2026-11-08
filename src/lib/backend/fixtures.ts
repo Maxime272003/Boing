@@ -178,6 +178,33 @@ Lundi au vendredi, tickets restaurant, mutuelle prise en charge à 50 %. Accès 
     skills: ['Gestion du courrier', 'Accueil du public'],
     description: `Au sein du service population, vous accueillez le public, gérez le courrier, tenez les agendas des élus et assurez le classement et l'archivage des dossiers. Maîtrise de Word et Excel.`
   }  ,
+  // Même annonce reprise par Adzuna : Boing ne doit la garder qu'une fois.
+  {
+    id: 'az-4455999',
+    title: 'Assistante administrative H/F',
+    company: 'CABINET VAUBAN CONSEIL',
+    location: 'Lyon, Rhône',
+    contract: 'CDI',
+    contractLabel: 'CDI',
+    workingTime: 'Temps plein',
+    applyUrl: 'https://www.adzuna.fr/details/4455999',
+    publishedAt: daysAgo(0, 7),
+    description: 'Cabinet de conseil de 25 personnes, nous recherchons une assistante administrative…'
+  },
+  // Offre ancienne : archivée automatiquement à l'arrivée.
+  {
+    id: 'ft-170OLD1',
+    title: "Assistante d'agence (H/F)",
+    company: 'Agence Mistral',
+    location: '69 - Lyon 4e Arrondissement',
+    postalCode: '69004',
+    contract: 'CDI',
+    contractLabel: 'CDI',
+    workingTime: 'Temps plein',
+    applyEmail: 'contact@agence-mistral.example',
+    publishedAt: daysAgo(45),
+    description: "Agence immobilière : accueil, gestion des rendez-vous et suivi administratif des dossiers."
+  },
   // ----- Métier : concept artist -----
   {
     id: 'ft-180CAR1',

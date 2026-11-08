@@ -72,6 +72,7 @@
       autoAnalyse: s.autoAnalyse,
       maxAutoAnalyse: Number(s.maxAutoAnalyse) || 25,
       fetchEvery: s.fetchEvery,
+      archiveAfterDays: Number(s.archiveAfterDays) || 0,
       defaultFollowUpDays: Number(s.defaultFollowUpDays) || 7
     });
     store.toast('Réglages enregistrés', 'success');
@@ -215,7 +216,7 @@
           <label class="field">Modèle pour CV et lettre (précis)<input class="input" bind:value={s.modelBest} /></label>
         </div>
         <div class="stack" style="--gap:8px">
-          <div class="spread" style="font-size:13px"><span>Utilisation ce mois-ci : {store.settings.usage.calls} appels</span><span><strong>{formatTokens(used)}</strong> tokens sur un plafond de {formatTokens(store.settings.monthlyTokenCap)}</span></div>
+          <div class="spread" style="font-size:13px"><span>Utilisation ce mois-ci : {store.settings.usage.calls} appels{store.settings.usage.cacheReadTokens ? ` · ${formatTokens(store.settings.usage.cacheReadTokens)} tokens relus en cache (10 fois moins chers)` : ''}</span><span><strong>{formatTokens(used)}</strong> tokens sur un plafond de {formatTokens(store.settings.monthlyTokenCap)}</span></div>
           <div class="bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Utilisation du plafond"><div style="width:{pct}%"></div></div>
         </div>
         <div class="grid2">
@@ -259,6 +260,7 @@
         </label>
         <label class="spread line">Analyser automatiquement les nouvelles offres avec Claude<input type="checkbox" bind:checked={s.autoAnalyse} style="width:18px;height:18px" /></label>
         <label class="spread line">Nombre maximum d'offres analysées par collecte<input class="input" type="number" min="1" max="200" style="width:100px;height:40px" bind:value={s.maxAutoAnalyse} /></label>
+        <label class="spread line">Archiver les offres publiées depuis plus de (jours, 0 = jamais)<input class="input" type="number" min="0" max="365" style="width:100px;height:40px" bind:value={s.archiveAfterDays} /></label>
         <label class="spread line">Délai de relance par défaut (jours)<input class="input" type="number" min="1" max="60" style="width:100px;height:40px" bind:value={s.defaultFollowUpDays} /></label>
         <p class="hint">La collecte se fait quand Boing est ouvert.</p>
         <div class="row" style="justify-content:flex-end"><button class="btn primary" onclick={saveGeneral}>Enregistrer</button></div>

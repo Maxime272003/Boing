@@ -1,7 +1,8 @@
 import type { Backend } from '../backend';
-import type { Analysis, Application, Completion, CvChange, CvOp, LetterOptions, Offer, Profile, SearchKind, Settings } from '../types';
+import type { Analysis, Application, Completion, CvChange, CvOp, LetterOptions, Offer, Profile, SearchKind, Settings, TextBlock } from '../types';
 import { extractJson, str, strList } from './json';
 import { systemPrompt, type Task } from './prompts';
+import { findUnexpected } from './guard';
 
 export interface AiContext {
   backend: Backend;
@@ -15,15 +16,30 @@ export function overCap(settings: Settings): boolean {
   return settings.blockOverCap && settings.monthlyTokenCap > 0 && used >= settings.monthlyTokenCap;
 }
 
-async function ask<T>(ctx: AiContext, task: Task, payload: unknown, opts: { best: boolean; maxTokens?: number }): Promise<T> {
+/**
+ * Envoie une tâche à Claude. `shared` (profil, mode…) est identique d'un appel à l'autre :
+ * il est placé en premier et mis en cache avec les consignes, ce qui réduit coût et délai
+ * quand on analyse beaucoup d'offres d'affilée. `specific` change à chaque appel.
+ */
+async function ask<T>(
+  ctx: AiContext,
+  task: Task,
+  shared: unknown,
+  specific: unknown,
+  opts: { best: boolean; maxTokens?: number }
+): Promise<T> {
   if (overCap(ctx.settings)) {
     throw new Error('Plafond mensuel de tokens atteint : augmente-le dans Paramètres pour continuer.');
   }
+  const content: TextBlock[] = [];
+  if (shared !== null) content.push({ type: 'text', text: JSON.stringify(shared), cache_control: { type: 'ephemeral' } });
+  content.push({ type: 'text', text: JSON.stringify(specific) });
   const completion = await ctx.backend.claude({
     model: opts.best ? ctx.settings.modelBest : ctx.settings.modelFast,
     system: systemPrompt(task),
-    messages: [{ role: 'user', content: JSON.stringify(payload) }],
-    maxTokens: opts.maxTokens ?? 2048
+    messages: [{ role: 'user', content }],
+    maxTokens: opts.maxTokens ?? 2048,
+    cacheSystem: true
   });
   await ctx.onUsage(completion);
   return extractJson<T>(completion.text);
@@ -64,7 +80,7 @@ export function profileForPrompt(p: Profile) {
 // ---------- Lecture du CV ----------
 
 export async function parseCv(ctx: AiContext, cvText: string): Promise<Omit<Profile, 'id'>> {
-  const r = await ask<Record<string, unknown>>(ctx, 'parse_cv', { cvText: cvText.slice(0, 20000) }, { best: true, maxTokens: 3000 });
+  const r = await ask<Record<string, unknown>>(ctx, 'parse_cv', null, { cvText: cvText.slice(0, 20000) }, { best: true, maxTokens: 3000 });
   const exps = Array.isArray(r.experiences) ? r.experiences : [];
   const edu = Array.isArray(r.education) ? r.education : [];
   return {
@@ -107,7 +123,8 @@ export async function analyseOffer(ctx: AiContext, profile: Profile, offer: Offe
   const r = await ask<Record<string, unknown>>(
     ctx,
     'analyse',
-    { mode, profile: profileForPrompt(profile), offer: offerForPrompt(offer) },
+    { mode, profile: profileForPrompt(profile) },
+    { offer: offerForPrompt(offer) },
     { best: false, maxTokens: 800 }
   );
   const raw = Number(r.score);
@@ -177,7 +194,8 @@ export async function adaptCv(
   const r = await ask<{ changes?: unknown }>(
     ctx,
     'adapt_cv',
-    { mode, profile: profileForPrompt(profile), offer: offerForPrompt(offer), analysis },
+    { mode, profile: profileForPrompt(profile) },
+    { offer: offerForPrompt(offer), analysis },
     { best: true, maxTokens: 2500 }
   );
   const list = Array.isArray(r.changes) ? r.changes : [];
@@ -185,6 +203,8 @@ export async function adaptCv(
   list.forEach((c: any, i: number) => {
     const op = sanitizeOp(c?.op, profile);
     if (!op) return;
+    // Une modification qui glisse un lien, une adresse ou un numéro inconnu est écartée.
+    if ((op.kind === 'title' || op.kind === 'summary' || op.kind === 'bullet') && findUnexpected(op.value, profile, offer).length) return;
     out.push({ id: `c${i + 1}`, title: str(c.title) || 'Modification', why: str(c.why), op, accepted: true });
   });
   return out;
@@ -196,6 +216,8 @@ export interface LetterResult {
   letter: string;
   mailSubject: string;
   mailBody: string;
+  /** Éléments inattendus repérés dans la lettre ou l'e-mail (à faire vérifier). */
+  warnings: string[];
 }
 
 export async function writeLetter(
@@ -210,9 +232,8 @@ export async function writeLetter(
   const r = await ask<Record<string, unknown>>(
     ctx,
     'write_letter',
+    { mode, profile: profileForPrompt(profile) },
     {
-      mode,
-      profile: profileForPrompt(profile),
       offer: offerForPrompt(offer),
       analysis,
       options,
@@ -221,9 +242,14 @@ export async function writeLetter(
     },
     { best: true, maxTokens: 2500 }
   );
-  const letter = str(r.letter);
+  const letter = str(r.letter).slice(0, 8000);
   if (!letter) throw new Error('Claude n’a pas renvoyé de lettre.');
-  return { letter, mailSubject: str(r.mailSubject), mailBody: str(r.mailBody) };
+  const mailSubject = str(r.mailSubject).slice(0, 200);
+  const mailBody = str(r.mailBody).slice(0, 4000);
+  const warnings = findUnexpected(`${letter}
+${mailSubject}
+${mailBody}`, profile, offer);
+  return { letter, mailSubject, mailBody, warnings };
 }
 
 // ---------- Relance ----------
@@ -232,7 +258,8 @@ export async function followUp(ctx: AiContext, profile: Profile, app: Applicatio
   const r = await ask<Record<string, unknown>>(
     ctx,
     'follow_up',
-    { profile: profileForPrompt(profile), offer: offerForPrompt(app.offer), sentAt: app.sentAt, originalSubject: app.mail.subject },
+    { mode: app.kind, profile: profileForPrompt(profile) },
+    { offer: offerForPrompt(app.offer), sentAt: app.sentAt, originalSubject: app.mail.subject },
     { best: false, maxTokens: 600 }
   );
   return { subject: str(r.subject), body: str(r.body) };

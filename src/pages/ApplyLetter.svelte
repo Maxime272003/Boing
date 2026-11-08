@@ -3,6 +3,7 @@
   import { store } from '$lib/store.svelte';
   import { href, router } from '$lib/router.svelte';
   import { writeLetter } from '$lib/ai/engine';
+  import { findUnexpected } from '$lib/ai/guard';
   import { fileNames, letterPdf } from '$lib/documents';
   import type { Application, LetterLength, Tone } from '$lib/types';
   import ApplyHeader from '../components/ApplyHeader.svelte';
@@ -19,6 +20,7 @@
   const pointChoices = $derived([
     ...new Set([...(analysis?.keywords ?? []).slice(0, 4), ...profile.languages.slice(0, 1)])
   ]);
+  const warnings = $derived(app ? findUnexpected(app.letter, profile, app.offer) : []);
   const words = $derived(app?.letter.trim() ? app.letter.trim().split(/\s+/).length : 0);
 
   async function persist() {
@@ -83,6 +85,13 @@
 {:else}
   <div class="page">
     <ApplyHeader {app} step="lettre" />
+
+    {#if warnings.length}
+      <div class="banner warn" role="alert">
+        <span style="color:var(--warn)"><Icon name="lock" /></span>
+        <span class="grow"><strong>À vérifier avant d'envoyer :</strong> {warnings.join(' · ')}. Une offre peut contenir du texte piégé ; si ce n'est pas toi qui l'as écrit, retire-le.</span>
+      </div>
+    {/if}
 
     <div class="cols">
       <section class="card editor" aria-label="Lettre de motivation">

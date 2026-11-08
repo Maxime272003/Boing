@@ -96,6 +96,10 @@ export interface Offer {
   favorite?: boolean;
   hidden?: boolean;
   seen?: boolean;
+  /** Offre trop ancienne, rangée automatiquement. */
+  archived?: boolean;
+  /** Ressortie des archives à la main : ne plus l'archiver. */
+  keep?: boolean;
 }
 
 export interface Analysis {
@@ -205,9 +209,10 @@ export interface Settings {
   maxAutoAnalyse: number;
   monthlyTokenCap: number;
   blockOverCap: boolean;
-  usage: { month: string; inputTokens: number; outputTokens: number; calls: number };
+  usage: { month: string; inputTokens: number; outputTokens: number; calls: number; cacheReadTokens?: number };
   smtp: SmtpSettings;
   fetchEvery: 'daily' | '4h' | 'manual';
+  archiveAfterDays: number;
   lastFetchAt?: string;
   defaultFollowUpDays: number;
 }
@@ -234,9 +239,15 @@ export interface Criteria {
   publishedSinceDays?: number | null;
 }
 
+export interface TextBlock {
+  type: 'text';
+  text: string;
+  cache_control?: { type: 'ephemeral' };
+}
+
 export interface ClaudeMessage {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | TextBlock[];
 }
 
 export interface CompletionRequest {
@@ -244,12 +255,16 @@ export interface CompletionRequest {
   system: string;
   messages: ClaudeMessage[];
   maxTokens?: number;
+  /** Met les consignes en cache côté API (réutilisées d'un appel à l'autre). */
+  cacheSystem?: boolean;
 }
 
 export interface Completion {
   text: string;
   inputTokens: number;
   outputTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
 }
 
 export interface OutgoingMail {

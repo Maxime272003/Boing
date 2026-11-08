@@ -1,6 +1,5 @@
 // Fabrication et enregistrement des PDF d'une candidature.
 import { applyChanges, fullName } from './cv';
-import { renderCv, renderLetter } from './pdf/render';
 import { posteDe, slug } from './format';
 import type { Application, Profile } from './types';
 import type { Backend } from './backend';
@@ -11,11 +10,16 @@ export function fileNames(app: Application, p: Profile) {
   return { cv: `CV_${who}_${co}.pdf`, letter: `Lettre_${who}_${co}.pdf`, folder: `${co}_${app.id.slice(-5)}` };
 }
 
+// pdf-lib n'est chargé qu'au moment de générer un PDF (démarrage plus rapide).
+const pdf = () => import('./pdf/render');
+
 export async function cvPdf(app: Application, p: Profile): Promise<Uint8Array> {
+  const { renderCv } = await pdf();
   return renderCv(applyChanges(p, app.cvChanges), app.cvTemplate);
 }
 
 export async function letterPdf(app: Application, p: Profile): Promise<Uint8Array> {
+  const { renderLetter } = await pdf();
   return renderLetter(
     {
       senderName: fullName(p),

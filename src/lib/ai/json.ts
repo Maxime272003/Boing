@@ -13,5 +13,10 @@ export function extractJson<T = unknown>(text: string): T {
 }
 
 export const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v.trim() : fallback);
-export const strList = (v: unknown, max = 50): string[] =>
-  Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim() !== '').map((x) => x.trim()).slice(0, max) : [];
+export const strList = (v: unknown, max = 50, maxLen = 400): string[] =>
+  Array.isArray(v)
+    ? v
+        .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+        .map((x) => x.trim().slice(0, maxLen))
+        .slice(0, max)
+    : [];

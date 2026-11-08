@@ -2,7 +2,6 @@
   import { store, emptyProfile, newId } from '$lib/store.svelte';
   import { href } from '$lib/router.svelte';
   import { parseCv } from '$lib/ai/engine';
-  import { extractText } from '$lib/pdf/extract';
   import { cleanTitle, shortDate } from '$lib/format';
   import type { LetterTemplate, Profile, Search } from '$lib/types';
   import Icon from '../components/Icon.svelte';
@@ -23,7 +22,7 @@
     if (!file) return;
     reading = true;
     try {
-      const text = await extractText(file);
+      const text = await (await import('$lib/pdf/extract')).extractText(file);
       if (store.aiReady) {
         const parsed = await parseCv(store.aiContext(), text);
         editingProfile = { ...emptyProfile(), ...parsed, cvText: text, cvFileName: file.name };
