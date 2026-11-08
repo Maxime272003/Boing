@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
+  "repository": "github:Maxime272003/Boing",
   "description": "Boing — trouver un travail plus vite : offres, score de match, CV et lettre adaptés, suivi des candidatures.",
   "scripts": {
     "dev": "vite",

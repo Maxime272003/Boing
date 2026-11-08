@@ -92,9 +92,9 @@ Pour Playwright avec le Chrome déjà installé plutôt qu'un Chromium télécha
 
 ## Publier une version
 
-1. Changer `version` dans `package.json` (c'est la seule source de vérité).
-2. Committer, puis : `git tag v0.2.0 && git push origin v0.2.0`.
-3. Le workflow **Release** construit l'installeur Windows, le signe pour les mises à jour et crée la Release GitHub avec `latest.json`.
+1. Changer `version` dans `package.json` (c'est la seule source de vérité : l'app, l'installeur et la mise à jour automatique la lisent).
+2. Committer et pousser sur `main`.
+3. Le workflow **Release** voit la nouvelle version, construit l'installeur Windows, le signe pour les mises à jour et crée le tag `vX.Y.Z` et la Release GitHub avec `latest.json`. Les versions installées proposent alors la mise à jour.
 
 ### Mises à jour automatiques : la clé de signature
 

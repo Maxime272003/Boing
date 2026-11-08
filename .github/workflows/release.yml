@@ -1,9 +1,12 @@
 name: Release
 
-# Pour publier une version : changer "version" dans package.json, committer,
-# puis pousser un tag : git tag v0.2.0 && git push origin v0.2.0
+# Pour publier une version : changer "version" dans package.json et pousser sur main.
+# Le workflow crée le tag vX.Y.Z et la release si elle n'existe pas encore.
+# (Pousser un tag vX.Y.Z à la main marche aussi.)
 on:
   push:
+    branches: [main]
+    paths: ['package.json']
     tags: ['v*']
   workflow_dispatch:
 
@@ -16,17 +19,34 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Version à publier
+        id: v
+        shell: bash
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if [ "${GITHUB_REF_TYPE}" = "branch" ] && git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" > /dev/null; then
+            echo "La version v$VERSION est déjà publiée : rien à faire."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/setup-node@v5
+        if: steps.v.outputs.skip != 'true'
         with:
           node-version: 22
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
+        if: steps.v.outputs.skip != 'true'
       - uses: Swatinem/rust-cache@v2
+        if: steps.v.outputs.skip != 'true'
         with:
           workspaces: src-tauri
       - run: npm ci
+        if: steps.v.outputs.skip != 'true'
       # Sans clé de signature dans les secrets, on construit quand même l'installeur (sans mises à jour automatiques).
       - name: Mises à jour signées si la clé est disponible
+        if: steps.v.outputs.skip != 'true'
         shell: bash
         env:
           HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
@@ -36,6 +56,7 @@ jobs:
             node -e "const f='src-tauri/tauri.conf.json';const c=require('./'+f);c.bundle.createUpdaterArtifacts=false;require('fs').writeFileSync(f,JSON.stringify(c,null,2))"
           fi
       - uses: tauri-apps/tauri-action@v0
+        if: steps.v.outputs.skip != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Clé de signature des mises à jour (voir README, « Mises à jour automatiques »)
@@ -46,8 +67,9 @@ jobs:
           BOING_GOOGLE_CLIENT_SECRET: ${{ secrets.BOING_GOOGLE_CLIENT_SECRET }}
           BOING_MICROSOFT_CLIENT_ID: ${{ secrets.BOING_MICROSOFT_CLIENT_ID }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Boing ${{ github.ref_name }}'
+          tagName: ${{ steps.v.outputs.tag }}
+          releaseName: 'Boing ${{ steps.v.outputs.tag }}'
+          releaseCommitish: ${{ github.sha }}
           releaseBody: 'Télécharge le fichier « Boing_…_x64-setup.exe » ci-dessous et lance-le. Les versions déjà installées se mettent à jour toutes seules.'
           releaseDraft: false
           prerelease: false
