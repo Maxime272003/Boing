@@ -1,7 +1,7 @@
 {
   "name": "boing",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Boing — trouver un travail plus vite : offres, score de match, CV et lettre adaptés, suivi des candidatures.",
   "scripts": {

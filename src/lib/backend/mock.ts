@@ -227,7 +227,7 @@ export function createMockBackend(): Backend {
     },
     async installUpdate() {},
     async appVersion() {
-      return '0.1.0';
+      return '0.2.0';
     }
   };
 }

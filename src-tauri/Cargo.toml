@@ -1,6 +1,6 @@
 [package]
 name = "boing"
-version = "0.1.0"
+version = "0.2.0"
 description = "Boing — assistant de recherche d'emploi"
 authors = ["Maxime Rousseau"]
 edition = "2021"
