@@ -3,7 +3,7 @@
   import { href } from '$lib/router.svelte';
   import { addDays, ago, cleanTitle, dateTime, shortDate } from '$lib/format';
   import { followUp } from '$lib/ai/engine';
-  import type { Application, AppStatus } from '$lib/types';
+  import type { Application, AppStatus, SearchKind } from '$lib/types';
   import Icon from '../components/Icon.svelte';
   import Modal from '../components/Modal.svelte';
 
@@ -15,7 +15,10 @@
     { id: 'closed', name: 'Clôturée', dot: '#a1a1aa' }
   ];
 
-  const by = (s: AppStatus) => store.applications.filter((a) => a.status === s);
+  let kindFilter = $state<'all' | SearchKind>('all');
+  const hasStopgap = $derived(store.applications.some((a) => a.kind === 'stopgap'));
+  const shown = $derived(kindFilter === 'all' ? store.applications : store.applications.filter((a) => a.kind === kindFilter));
+  const by = (s: AppStatus) => shown.filter((a) => a.status === s);
   const stats = $derived({
     sent: store.applications.filter((a) => a.status !== 'draft').length,
     answers: store.applications.filter((a) => a.status === 'interview' || (a.status === 'closed' && a.outcome && a.outcome !== 'sans_reponse')).length,
@@ -88,7 +91,7 @@
   }
 
   // ----- Candidature faite ailleurs -----
-  let external = $state<{ title: string; company: string; to: string } | null>(null);
+  let external = $state<{ title: string; company: string; to: string; kind: SearchKind } | null>(null);
   async function addExternal() {
     if (!external || !external.title.trim() || !external.company.trim()) return;
     const now = new Date().toISOString();
@@ -97,6 +100,7 @@
       id: newId('app-'),
       offerId: id,
       offer: { id, source: 'Autre', sourceId: id, title: external.title, company: external.company, location: '', description: '', skills: [] },
+      kind: external.kind,
       score: null,
       status: 'sent',
       cvChanges: [],
@@ -127,7 +131,7 @@
       <h1>Candidatures</h1>
       <p class="meta">Fais glisser une carte ou change son statut pour la déplacer.</p>
     </div>
-    <button class="btn" onclick={() => (external = { title: '', company: '', to: '' })}><Icon name="plus" size={16} />Ajouter une candidature faite ailleurs</button>
+    <button class="btn" onclick={() => (external = { title: '', company: '', to: '', kind: 'career' })}><Icon name="plus" size={16} />Ajouter une candidature faite ailleurs</button>
   </header>
 
   <div class="grid4">
@@ -136,6 +140,14 @@
     <div class="card tight stat"><span class="meta">Entretiens</span><strong>{stats.interviews}</strong></div>
     <div class="card tight stat" class:warn={stats.due}><span class="meta" style:color={stats.due ? "inherit" : undefined}>Relances à faire</span><strong>{stats.due}</strong></div>
   </div>
+
+  {#if hasStopgap}
+    <div class="seg" role="radiogroup" aria-label="Type de candidatures">
+      <button role="radio" aria-checked={kindFilter === 'all'} onclick={() => (kindFilter = 'all')}>Tout</button>
+      <button role="radio" aria-checked={kindFilter === 'career'} onclick={() => (kindFilter = 'career')}>Mon métier</button>
+      <button role="radio" aria-checked={kindFilter === 'stopgap'} onclick={() => (kindFilter = 'stopgap')}>Jobs alimentaires</button>
+    </div>
+  {/if}
 
   {#each store.followUpsDue as a (a.id)}
     <div class="banner warn">
@@ -180,6 +192,7 @@
               <article class="kcard" draggable="true" ondragstart={() => (dragId = a.id)} ondragend={() => (dragId = null)} data-testid="app-card">
                 {#if cardLink(a)}<a class="t" href={cardLink(a)}>{cleanTitle(a.offer.title)}</a>{:else}<strong class="t">{cleanTitle(a.offer.title)}</strong>{/if}
                 <span class="co">{a.offer.company}</span>
+                {#if a.kind === 'stopgap'}<span class="badge warn" style="align-self:flex-start">Job alimentaire</span>{/if}
                 <div class="spread meta" style="gap:6px">
                   <span>
                     {#if a.status === 'draft'}Préparée {ago(a.createdAt)}
@@ -238,6 +251,7 @@
     <label class="field">Poste<input class="input" bind:value={external.title} /></label>
     <label class="field">Entreprise<input class="input" bind:value={external.company} /></label>
     <label class="field">E-mail du recruteur (facultatif, pour la relance)<input class="input" type="email" bind:value={external.to} /></label>
+    <label class="check"><input type="checkbox" checked={external.kind === 'stopgap'} onchange={(e) => (external!.kind = e.currentTarget.checked ? 'stopgap' : 'career')} />C'est un job alimentaire</label>
     {#snippet actions()}
       <button class="btn" onclick={() => (external = null)}>Annuler</button>
       <button class="btn primary" onclick={addExternal}>Ajouter</button>
@@ -246,21 +260,24 @@
 {/if}
 
 <style>
+  .seg { display: inline-flex; align-self: flex-start; background: var(--hover); border-radius: 10px; padding: 4px; gap: 4px; }
+  .seg button { border: 0; background: transparent; height: 36px; padding: 0 14px; border-radius: 7px; font-size: 14px; font-weight: 600; color: var(--ink-3); cursor: pointer; }
+  .seg button[aria-checked='true'] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
   .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   .stat { display: flex; flex-direction: column; gap: 4px; }
   .stat strong { font-family: 'Space Grotesk'; font-size: 28px; }
-  .stat.warn { background: var(--warn-soft); border-color: #f0d9a6; color: var(--warn); }
+  .stat.warn { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
   .board-wrap { overflow-x: auto; padding-bottom: 6px; }
   .board { display: grid; grid-template-columns: repeat(5, minmax(220px, 1fr)); gap: 12px; min-width: 1140px; }
-  .col { background: #ededE8; border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 380px; outline: 2px dashed transparent; }
+  .col { background: var(--sunken); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; min-height: 380px; outline: 2px dashed transparent; }
   .col.over { outline-color: var(--accent); background: var(--accent-soft); }
   .dot { width: 10px; height: 10px; border-radius: 50%; }
-  .kcard { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; cursor: grab; }
+  .kcard { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; cursor: grab; }
   .t { font-size: 14px; font-weight: 600; color: var(--ink); text-decoration: none; }
   a.t:hover { color: var(--accent); text-decoration: underline; }
   .co { color: var(--ink-3); }
   .tag { padding: 6px 8px; border-radius: 6px; font-weight: 600; }
   .tag.info { background: var(--accent-soft); color: var(--accent-ink); }
-  .tag.warn { background: var(--warn-soft); color: #6b4500; }
+  .tag.warn { background: var(--warn-soft); color: var(--warn-ink); }
   .status { height: 32px; font-size: 13px; margin-top: 4px; }
 </style>

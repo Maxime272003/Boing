@@ -48,7 +48,10 @@
       <div class="row" style="--gap:16px; flex-wrap:nowrap; min-width:0">
         <div class="logo-co" aria-hidden="true">{initials || '?'}</div>
         <div class="stack" style="--gap:6px; min-width:0">
-          <h1 style="font-size:28px">{cleanTitle(offer.title)}</h1>
+          <div class="row" style="--gap:10px">
+            <h1 style="font-size:28px">{cleanTitle(offer.title)}</h1>
+            {#if store.offerKind(offer) === 'stopgap'}<span class="badge warn">Job alimentaire</span>{/if}
+          </div>
           <div class="meta row" style="--gap:6px 14px; font-size:14px">
             <span>{offer.company}</span><span>{offer.location}</span>
             {#if offer.contractLabel}<span>{offer.contractLabel}{offer.workingTime ? ` · ${offer.workingTime.toLowerCase()}` : ''}</span>{/if}
@@ -92,6 +95,7 @@
               <div class="stack" style="--gap:4px">
                 <h2 id="ana">{analysis.verdict}</h2>
                 <span class="meta">Analysé par Claude · {ago(analysis.analysedAt)}</span>
+                {#if analysis.mode === 'stopgap'}<span class="meta">Noté comme job alimentaire : chance d'être prise vite et de tenir le poste.</span>{/if}
               </div>
             </div>
             {#if analysis.summary}<p style="font-size:14px">{analysis.summary}</p>{/if}
@@ -136,7 +140,7 @@
 
 <style>
   .back { font-size: 14px; font-weight: 600; text-decoration: none; min-height: 32px; }
-  .logo-co { width: 56px; height: 56px; border-radius: 12px; background: #ededE8; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk'; font-weight: 700; font-size: 20px; color: var(--ink-3); flex: none; }
+  .logo-co { width: 56px; height: 56px; border-radius: 12px; background: var(--sunken); display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk'; font-weight: 700; font-size: 20px; color: var(--ink-3); flex: none; }
   .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
   .desc { flex: 999 1 460px; min-width: 0; padding: 24px 28px; }
   .text { white-space: pre-line; font-size: 15px; line-height: 1.65; color: var(--ink-2); }

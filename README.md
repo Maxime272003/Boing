@@ -10,6 +10,10 @@
 4. **envoie la candidature** (depuis l'app par e-mail, via ta messagerie, ou en te guidant sur le site de l'employeur) ;
 5. **suit tes candidatures** (à envoyer → envoyée → relancée → entretien → clôturée) et te rappelle de relancer, avec un brouillon prêt.
 
+**Métier et job alimentaire.** En plus du métier visé (ex. concept artist), Boing peut chercher un **job alimentaire** en attendant (vente, caisse, service…). Ces offres sont notées sur la chance d'être prise vite et de tenir le poste avec tes contraintes (horaires, temps partiel), le CV est recentré sur ce qui compte pour le poste (missions trop spécialisées masquées, rien d'inventé) et la lettre est courte et directe. Un filtre « Mon métier / Jobs alimentaires » sépare les offres et les candidatures.
+
+**Mode sombre** automatique, selon le thème de Windows.
+
 Tout est stocké **sur ton PC** (SQLite). Les clés API sont rangées dans le **coffre-fort de Windows** (Gestionnaire d'identification), jamais dans un fichier.
 
 ## Installer
@@ -43,7 +47,7 @@ src-tauri/src/           Backend Rust
   mail.rs                Envoi SMTP
 ```
 
-**Garde-fous sur l'IA.** Claude ne peut proposer que des opérations précises sur le CV (reformuler l'accroche, une mission, réordonner les compétences). Le code rejette toute compétence absente de ta fiche profil et toute référence à une expérience qui n'existe pas. Chaque modification s'accepte ou se refuse une par une.
+**Garde-fous sur l'IA.** Claude ne peut proposer que des opérations précises sur le CV (reformuler l'accroche ou une mission, masquer une mission, réordonner les compétences). Le code rejette toute compétence absente de ta fiche profil et toute référence à une expérience qui n'existe pas. Chaque modification s'accepte ou se refuse une par une.
 
 ## Développer
 

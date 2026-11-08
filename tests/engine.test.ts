@@ -4,7 +4,7 @@ import { adaptCv, analyseOffer, parseCv, sanitizeOp, writeLetter, overCap } from
 import { systemPrompt, taskOf } from '../src/lib/ai/prompts';
 import { applyChanges, baseCv } from '../src/lib/cv';
 import { fakeClaude } from '../src/lib/backend/fake-claude';
-import { FIXTURE_OFFERS, SAMPLE_CV_TEXT } from '../src/lib/backend/fixtures';
+import { FIXTURE_OFFERS, SAMPLE_ARTIST_CV_TEXT, SAMPLE_CV_TEXT } from '../src/lib/backend/fixtures';
 import type { Backend } from '../src/lib/backend';
 import type { Profile, Settings } from '../src/lib/types';
 
@@ -104,5 +104,51 @@ describe('garde-fous', () => {
     const cv = baseCv({ ...p, firstName: 'A', lastName: 'B', title: 't', city: 'Lyon', phone: '', email: '', drivingLicense: true } as Profile);
     expect(cv.fullName).toBe('A B');
     expect(cv.contact).toEqual(['Lyon', 'Permis B']);
+  });
+});
+
+describe('job alimentaire', () => {
+  const lea = async (): Promise<Profile> => ({ id: 'me', ...(await parseCv(ctx, SAMPLE_ARTIST_CV_TEXT)) });
+  const offer = (company: string) => FIXTURE_OFFERS.find((o) => o.company === company)!;
+
+  it('lit le métier visé et propose des jobs d’appoint', async () => {
+    const p = await lea();
+    expect(p.careerGoal).toBe('Concept artist');
+    expect(p.stopgapJobs).toContain('Vendeuse');
+  });
+
+  it('note différemment selon le mode', async () => {
+    const p = await lea();
+    const a = await analyseOffer(ctx, p, offer('Atelier Pigment'), 'stopgap');
+    expect(a.mode).toBe('stopgap');
+    expect(a.score).toBe(91);
+    expect((await analyseOffer(ctx, p, offer('Brasserie des Terreaux'), 'stopgap')).score).toBeLessThan(50);
+  });
+
+  it('masque les missions trop spécialisées sans rien inventer', async () => {
+    const p = await lea();
+    const changes = await adaptCv(ctx, p, offer('Atelier Pigment'), null, 'stopgap');
+    expect(changes.map((c) => c.op.kind)).toContain('hide_bullet');
+    const cv = applyChanges(p, changes);
+    expect(cv.title).toBe('Vendeuse — conseil client');
+    expect(cv.experiences[0].bullets).not.toContain("Recherches d'environnements et de personnages pour deux jeux indépendants");
+    expect(cv.experiences[0].bullets).toHaveLength(3);
+    expect(cv.experiences[1].bullets).toEqual(["Participation aux revues d'équipe quotidiennes"]);
+    expect(cv.skills.slice(0, 2)).toEqual(['Conseil client', 'Encaissement']);
+    // Le profil n'est pas modifié
+    expect(p.experiences[0].bullets).toHaveLength(4);
+  });
+
+  it('écrit une lettre courte en mode alimentaire', async () => {
+    const p = await lea();
+    const r = await writeLetter(ctx, p, offer('Atelier Pigment'), null, { tone: 'direct', length: 'courte', points: [], instruction: '' }, undefined, 'stopgap');
+    expect(r.letter).toContain('concept artist');
+    expect(r.letter.split(/\s+/).length).toBeLessThan(170);
+  });
+
+  it('refuse un masquage hors limites', () => {
+    const p = { experiences: [{ bullets: ['a'] }], skills: [] } as unknown as Profile;
+    expect(sanitizeOp({ kind: 'hide_bullet', exp: 0, index: 3 }, p)).toBeNull();
+    expect(sanitizeOp({ kind: 'hide_bullet', exp: 0, index: 0 }, p)).toEqual({ kind: 'hide_bullet', exp: 0, index: 0 });
   });
 });

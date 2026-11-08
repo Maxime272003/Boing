@@ -177,6 +177,88 @@ Lundi au vendredi, tickets restaurant, mutuelle prise en charge à 50 %. Accès 
     publishedAt: daysAgo(5),
     skills: ['Gestion du courrier', 'Accueil du public'],
     description: `Au sein du service population, vous accueillez le public, gérez le courrier, tenez les agendas des élus et assurez le classement et l'archivage des dossiers. Maîtrise de Word et Excel.`
+  }  ,
+  // ----- Métier : concept artist -----
+  {
+    id: 'ft-180CAR1',
+    title: 'Concept artist junior (H/F)',
+    company: 'Studio Cerf-Volant',
+    location: '69 - Lyon 7e Arrondissement',
+    postalCode: '69007',
+    contract: 'CDD',
+    contractLabel: 'CDD - 12 mois',
+    workingTime: 'Temps plein',
+    salary: 'Annuel de 26 000 € à 29 000 €',
+    experience: '1 an',
+    applyEmail: 'jobs@cerf-volant.example',
+    publishedAt: daysAgo(1),
+    skills: ['Photoshop', 'Dessin'],
+    description: `Studio d'animation de 40 personnes, nous cherchons un ou une concept artist junior pour notre prochaine série. Vous réalisez des recherches de décors et d'accessoires, en lien avec la directrice artistique. Portfolio indispensable. Photoshop maîtrisé ; Blender apprécié.`
+  },
+  {
+    id: 'ft-180CAR2',
+    title: 'Concept artist environnement (H/F)',
+    company: 'Brume Games',
+    location: '69 - Villeurbanne',
+    postalCode: '69100',
+    contract: 'CDI',
+    contractLabel: 'CDI',
+    workingTime: 'Temps plein',
+    salary: 'Annuel de 32 000 € à 38 000 €',
+    experience: '3 ans',
+    applyEmail: 'recrutement@brume-games.example',
+    publishedAt: daysAgo(3),
+    skills: ['Unreal Engine', 'Photoshop'],
+    description: `Pour notre jeu d'aventure, vous concevez les environnements du concept à l'intégration de blockouts dans Unreal Engine. 3 ans d'expérience en production de jeu vidéo exigés.`
+  },
+  // ----- Jobs alimentaires -----
+  {
+    id: 'ft-180VEN1',
+    title: 'Vendeuse en librairie-papeterie (H/F)',
+    company: 'Librairie du Passage',
+    location: '69 - Lyon 2e Arrondissement',
+    postalCode: '69002',
+    contract: 'CDI',
+    contractLabel: 'CDI',
+    workingTime: 'Temps partiel',
+    salary: 'Horaire de 12,10 €',
+    experience: 'Débutant accepté',
+    applyEmail: 'contact@librairie-passage.example',
+    publishedAt: daysAgo(0, 8),
+    skills: ['Encaissement', 'Conseil client'],
+    description: `Librairie indépendante, rayon papeterie et beaux-livres. Poste à 24 h par semaine, du mardi au samedi. Accueil et conseil des clients, encaissement, réception des livraisons et mise en rayon. Une première expérience en vente est appréciée.`
+  },
+  {
+    id: 'ft-180VEN2',
+    title: 'Vendeuse en magasin de beaux-arts (H/F)',
+    company: 'Atelier Pigment',
+    location: '69 - Lyon 6e Arrondissement',
+    postalCode: '69006',
+    contract: 'CDD',
+    contractLabel: 'CDD - 6 mois',
+    workingTime: 'Temps partiel',
+    salary: 'Horaire de 12,30 €',
+    experience: 'Débutant accepté',
+    applyEmail: 'boutique@atelier-pigment.example',
+    publishedAt: daysAgo(1),
+    skills: ['Conseil client', 'Encaissement'],
+    description: `Magasin de matériel pour artistes (dessin, peinture, papiers). 20 h par semaine, du lundi au samedi selon planning, pas de dimanche. Vous conseillez une clientèle d'étudiants et de professionnels, tenez la caisse et participez aux vitrines. Une pratique artistique est un vrai plus.`
+  },
+  {
+    id: 'ft-180SER1',
+    title: 'Serveur / Serveuse (H/F)',
+    company: 'Brasserie des Terreaux',
+    location: '69 - Lyon 1er Arrondissement',
+    postalCode: '69001',
+    contract: 'CDI',
+    contractLabel: 'CDI',
+    workingTime: 'Temps plein',
+    salary: 'Mensuel de 1 850 € + pourboires',
+    experience: '1 an',
+    applyEmail: 'brasserie.terreaux@exemple.fr',
+    publishedAt: daysAgo(2),
+    skills: ['Service en salle'],
+    description: `Brasserie de 120 couverts. Service en salle et en terrasse, 39 h, coupures, soirs et week-ends dont le dimanche. Une première expérience en restauration est demandée.`
   }
 ];
 
@@ -232,5 +314,40 @@ Word, Excel, Outlook, standard téléphonique, accueil physique, gestion d'agend
 
 LANGUES
 Anglais (B2)
+
+Disponibilité : immédiate`;
+
+/** Deuxième CV d'exemple : une concept artist qui cherche aussi un job alimentaire. */
+export const SAMPLE_ARTIST_CV_TEXT = `Léa Moreau
+Concept artist
+Lyon · 06 98 76 54 32 · lea.moreau@exemple.fr
+
+PROFIL
+Concept artist 2D spécialisée en environnements et en personnages pour le jeu vidéo et l'animation.
+
+EXPÉRIENCE
+Concept artist freelance — jeu vidéo et édition — 2023 à aujourd'hui
+- Recherches d'environnements et de personnages pour deux jeux indépendants
+- Illustrations de couverture pour une maison d'édition jeunesse
+- Échanges réguliers avec les clients et respect des délais
+- Facturation et suivi administratif de l'activité
+
+Stagiaire concept art — Studio Lanterne (animation) — 2022 (6 mois)
+- Recherches graphiques de décors pour une série animée
+- Participation aux revues d'équipe quotidiennes
+
+Vendeuse (job étudiant) — Papeterie Moderne, Lyon — 2019 à 2022
+- Conseil et vente en boutique
+- Tenue de caisse et encaissements
+- Mise en rayon et vitrines
+
+FORMATION
+Diplôme d'illustration et de concept art — École de l'Image, Lyon — 2022
+
+COMPÉTENCES
+Photoshop, Procreate, Blender, dessin, conseil client, encaissement, travail en équipe, gestion de projet, respect des délais
+
+LANGUES
+Anglais (C1)
 
 Disponibilité : immédiate`;

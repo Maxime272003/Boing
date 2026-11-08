@@ -31,6 +31,12 @@ export interface Profile {
   availability: string;
   drivingLicense: boolean;
   suggestedJobs: string[];
+  /** Le métier visé à terme (ex. « Concept artist »). */
+  careerGoal: string;
+  /** Jobs d'appoint envisagés en attendant (« jobs alimentaires »). */
+  stopgapJobs: string[];
+  /** Contraintes pour un job d'appoint : horaires, jours, temps partiel… */
+  stopgapConstraints: string;
   cvFileName?: string;
   cvText?: string;
 }
@@ -44,9 +50,13 @@ export interface City {
   department?: string | null;
 }
 
+/** « career » = le métier visé ; « stopgap » = job alimentaire en attendant. */
+export type SearchKind = 'career' | 'stopgap';
+
 export interface Search {
   id: string;
   name: string;
+  kind: SearchKind;
   keywords: string[];
   city: City | null;
   distanceKm: number;
@@ -81,6 +91,7 @@ export interface Offer {
   experience?: string | null;
   // Champs ajoutés par Boing
   searchId?: string;
+  kind?: SearchKind;
   fetchedAt?: string;
   favorite?: boolean;
   hidden?: boolean;
@@ -89,6 +100,7 @@ export interface Offer {
 
 export interface Analysis {
   id: string; // = id de l'offre
+  mode: SearchKind;
   score: number;
   verdict: string;
   summary: string;
@@ -103,6 +115,7 @@ export type CvOp =
   | { kind: 'title'; value: string }
   | { kind: 'summary'; value: string }
   | { kind: 'bullet'; exp: number; index: number | null; value: string }
+  | { kind: 'hide_bullet'; exp: number; index: number }
   | { kind: 'skills'; value: string[] };
 
 export interface CvChange {
@@ -152,6 +165,7 @@ export interface Application {
   id: string;
   offerId: string;
   offer: Offer;
+  kind: SearchKind;
   score: number | null;
   status: AppStatus;
   outcome?: 'refus' | 'accepte' | 'sans_reponse' | null;

@@ -1,5 +1,5 @@
 import type { Backend } from '../backend';
-import type { Analysis, Application, Completion, CvChange, CvOp, LetterOptions, Offer, Profile, Settings } from '../types';
+import type { Analysis, Application, Completion, CvChange, CvOp, LetterOptions, Offer, Profile, SearchKind, Settings } from '../types';
 import { extractJson, str, strList } from './json';
 import { systemPrompt, type Task } from './prompts';
 
@@ -55,7 +55,9 @@ export function profileForPrompt(p: Profile) {
     skills: p.skills,
     languages: p.languages,
     availability: p.availability,
-    drivingLicense: p.drivingLicense
+    drivingLicense: p.drivingLicense,
+    careerGoal: p.careerGoal,
+    stopgapConstraints: p.stopgapConstraints
   };
 }
 
@@ -85,7 +87,10 @@ export async function parseCv(ctx: AiContext, cvText: string): Promise<Omit<Prof
     languages: strList(r.languages),
     availability: str(r.availability),
     drivingLicense: r.drivingLicense === true,
-    suggestedJobs: strList(r.suggestedJobs, 6)
+    suggestedJobs: strList(r.suggestedJobs, 6),
+    careerGoal: str(r.careerGoal),
+    stopgapJobs: strList(r.stopgapJobs, 6),
+    stopgapConstraints: ''
   };
 }
 
@@ -98,17 +103,18 @@ export function verdictFor(score: number): string {
   return 'Match faible';
 }
 
-export async function analyseOffer(ctx: AiContext, profile: Profile, offer: Offer): Promise<Analysis> {
+export async function analyseOffer(ctx: AiContext, profile: Profile, offer: Offer, mode: SearchKind = 'career'): Promise<Analysis> {
   const r = await ask<Record<string, unknown>>(
     ctx,
     'analyse',
-    { profile: profileForPrompt(profile), offer: offerForPrompt(offer) },
+    { mode, profile: profileForPrompt(profile), offer: offerForPrompt(offer) },
     { best: false, maxTokens: 800 }
   );
   const raw = Number(r.score);
   const score = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : 0;
   return {
     id: offer.id,
+    mode,
     score,
     verdict: str(r.verdict) || verdictFor(score),
     summary: str(r.summary),
@@ -141,6 +147,13 @@ export function sanitizeOp(op: any, profile: Profile): CvOp | null {
       if (index !== null && (!Number.isInteger(index) || index < 0 || index >= profile.experiences[exp].bullets.length)) return null;
       return { kind: 'bullet', exp, index, value };
     }
+    case 'hide_bullet': {
+      const exp = Number(op.exp);
+      const index = Number(op.index);
+      if (!Number.isInteger(exp) || !profile.experiences[exp]) return null;
+      if (!Number.isInteger(index) || index < 0 || index >= profile.experiences[exp].bullets.length) return null;
+      return { kind: 'hide_bullet', exp, index };
+    }
     case 'skills': {
       const allowed = new Map(profile.skills.map((s) => [norm(s), s]));
       const value = strList(op.value)
@@ -154,11 +167,17 @@ export function sanitizeOp(op: any, profile: Profile): CvOp | null {
   }
 }
 
-export async function adaptCv(ctx: AiContext, profile: Profile, offer: Offer, analysis: Analysis | null): Promise<CvChange[]> {
+export async function adaptCv(
+  ctx: AiContext,
+  profile: Profile,
+  offer: Offer,
+  analysis: Analysis | null,
+  mode: SearchKind = 'career'
+): Promise<CvChange[]> {
   const r = await ask<{ changes?: unknown }>(
     ctx,
     'adapt_cv',
-    { profile: profileForPrompt(profile), offer: offerForPrompt(offer), analysis },
+    { mode, profile: profileForPrompt(profile), offer: offerForPrompt(offer), analysis },
     { best: true, maxTokens: 2500 }
   );
   const list = Array.isArray(r.changes) ? r.changes : [];
@@ -185,12 +204,14 @@ export async function writeLetter(
   offer: Offer,
   analysis: Analysis | null,
   options: LetterOptions,
-  template?: string
+  template?: string,
+  mode: SearchKind = 'career'
 ): Promise<LetterResult> {
   const r = await ask<Record<string, unknown>>(
     ctx,
     'write_letter',
     {
+      mode,
       profile: profileForPrompt(profile),
       offer: offerForPrompt(offer),
       analysis,

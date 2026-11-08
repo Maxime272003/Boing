@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fresh, mockState, onboard } from './helpers';
+import { analysed, fresh, mockState, onboard } from './helpers';
 
 const offers = (page: Page) => page.getByTestId('offer');
 
@@ -12,7 +12,7 @@ test.describe('Premier lancement', () => {
     await expect(page.getByText('Agent d’accueil')).toHaveCount(0);
 
     // Claude analyse automatiquement, la meilleure offre remonte en tête
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
     await expect(offers(page).first()).toContainText('Assistante administrative');
     await expect(offers(page).first().getByRole('img', { name: 'Match 92 %' })).toBeVisible();
     await expect(offers(page).first()).toContainText('Très bon match');
@@ -41,7 +41,7 @@ test.describe('Premier lancement', () => {
 test.describe('Liste des offres', () => {
   test('filtres, recherche, favoris, masquer', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
 
     await page.getByRole('button', { name: /^Match ≥ 70 % · 6/ }).click();
     await expect(offers(page)).toHaveCount(6);
@@ -72,7 +72,7 @@ test.describe('Liste des offres', () => {
 test.describe('Candidature de bout en bout', () => {
   test('analyse, CV adapté, lettre, envoi par e-mail, suivi', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
 
     // Détail de l'offre
     await page.getByRole('link', { name: 'Assistante administrative' }).click();
@@ -150,7 +150,7 @@ test.describe('Candidature de bout en bout', () => {
 
   test('offre sans e-mail : postuler sur le site puis ajouter au suivi', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
     await page.getByRole('link', { name: "Chargée d'accueil" }).click();
     await page.getByRole('button', { name: 'Préparer ma candidature' }).first().click();
     await expect(page.getByTestId('cv-change')).toHaveCount(4);
@@ -170,7 +170,7 @@ test.describe('Candidature de bout en bout', () => {
 test.describe('Suivi des candidatures', () => {
   test('relance préparée par Claude, changement de statut, glisser-déposer', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
 
     // Une candidature faite ailleurs, envoyée il y a 9 jours
     await page.getByRole('link', { name: /Candidatures/ }).click();
@@ -274,7 +274,7 @@ test.describe('Mes documents et paramètres', () => {
 
   test('les données restent après un redémarrage', async ({ page }) => {
     await onboard(page);
-    await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden({ timeout: 15_000 });
+    await analysed(page);
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Offres', exact: true })).toBeVisible();
     await expect(offers(page)).toHaveCount(6);

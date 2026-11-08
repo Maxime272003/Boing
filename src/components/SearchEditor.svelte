@@ -12,7 +12,12 @@
     { id: 'SAI', label: 'Saisonnier' }
   ];
 
+  const uid = Math.random().toString(36).slice(2, 7);
   let cityQuery = $state(search.city?.name ?? '');
+  // Si la ville est remplie de l'extérieur (ex. reprise de la recherche principale)
+  $effect(() => {
+    if (search.city && !cityQuery) cityQuery = search.city.name;
+  });
   let results = $state<Commune[]>([]);
   let open = $state(false);
   let timer: ReturnType<typeof setTimeout>;
@@ -43,24 +48,29 @@
 </script>
 
 <div class="stack" style="--gap:22px">
-  <ChipsInput bind:values={search.keywords} label="Métiers visés" placeholder="ex. Assistante administrative" {suggestions} />
+  <ChipsInput
+    bind:values={search.keywords}
+    label={search.kind === 'stopgap' ? 'Jobs alimentaires envisagés' : 'Métiers visés'}
+    placeholder={search.kind === 'stopgap' ? 'ex. Vendeuse' : 'ex. Assistante administrative'}
+    {suggestions}
+  />
 
   <div class="grid2">
     <div class="field" style="position:relative">
-      <label for="city">Ville</label>
+      <label for="city-{uid}">Ville</label>
       <input
-        id="city"
+        id="city-{uid}"
         class="input"
         autocomplete="off"
         role="combobox"
         aria-expanded={open}
-        aria-controls="city-list"
+        aria-controls="city-list-{uid}"
         bind:value={cityQuery}
         oninput={onCityInput}
         placeholder="ex. Lyon"
       />
       {#if open}
-        <ul id="city-list" role="listbox" class="list options">
+        <ul id="city-list-{uid}" role="listbox" class="list options">
           {#each results as c (c.insee)}
             <li role="option" aria-selected="false">
               <button type="button" onclick={() => pick(c)}>{c.name} <span class="meta">({c.department ?? c.postalCode})</span></button>
@@ -105,7 +115,7 @@
 </div>
 
 <style>
-  .options { position: absolute; top: 74px; left: 0; right: 0; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12); z-index: 10; padding: 4px; }
+  .options { position: absolute; top: 74px; left: 0; right: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12); z-index: 10; padding: 4px; }
   .options button { width: 100%; text-align: left; border: 0; background: none; padding: 10px 12px; border-radius: 6px; font-size: 14px; cursor: pointer; font-weight: 500; color: var(--ink); }
   .options button:hover { background: var(--accent-soft); }
 </style>

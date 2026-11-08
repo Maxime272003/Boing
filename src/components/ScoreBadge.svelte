@@ -18,6 +18,6 @@
   .score span { font-size: 11px; font-weight: 600; margin-top: 3px; }
   .high { background: var(--good-soft); color: var(--good); }
   .mid { background: var(--warn-soft); color: var(--warn); }
-  .low { background: #efefea; color: #52525b; }
-  .none { border: 1.5px dashed #c9c9c2; color: var(--muted); font-size: 11px; font-weight: 600; }
+  .low { background: var(--chip-muted); color: var(--ink-4); }
+  .none { border: 1.5px dashed var(--field-strong); color: var(--muted); font-size: 11px; font-weight: 600; }
 </style>

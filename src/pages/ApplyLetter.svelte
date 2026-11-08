@@ -30,7 +30,7 @@
     busy = true;
     try {
       const tpl = store.letters.find((l) => l.id === app!.letterOptions.templateId);
-      const r = await writeLetter(store.aiContext(), profile, app.offer, analysis ?? null, $state.snapshot(app.letterOptions), tpl?.text);
+      const r = await writeLetter(store.aiContext(), profile, app.offer, analysis ?? null, $state.snapshot(app.letterOptions), tpl?.text, app.kind);
       previous = app.letter || null;
       app.letter = r.letter;
       app.mail.subject = r.mailSubject || app.mail.subject;
@@ -144,7 +144,7 @@
   .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
   .editor { flex: 999 1 520px; min-width: 0; padding: 0; display: flex; flex-direction: column; }
   .toolbar { display: flex; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line-soft); align-items: center; min-height: 50px; }
-  .letter { border: 0; outline: 0; resize: vertical; min-height: 520px; padding: 32px 44px; font-family: Georgia, 'Times New Roman', serif; font-size: 15.5px; line-height: 1.7; color: var(--ink-2); border-radius: 0 0 14px 14px; }
+  .letter { border: 0; outline: 0; resize: vertical; min-height: 520px; padding: 32px 44px; font-family: Georgia, 'Times New Roman', serif; font-size: 15.5px; line-height: 1.7; color: var(--ink-2); background: transparent; border-radius: 0 0 14px 14px; }
   .letter:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
   .foot { border-top: 1px solid var(--line); padding-top: 18px; }
 </style>

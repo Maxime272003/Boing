@@ -40,7 +40,7 @@
 <style>
   .back { font-size: 13px; font-weight: 600; text-decoration: none; }
   .steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; font-size: 14px; }
-  .step { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: #fff; border: 1px solid var(--field); color: var(--ink-3); text-decoration: none; }
+  .step { display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border-radius: 999px; background: var(--panel); border: 1px solid var(--field); color: var(--ink-3); text-decoration: none; }
   .step.done { background: var(--good-soft); border-color: var(--good-soft); color: var(--good); font-weight: 600; }
-  .step.current { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+  .step.current { background: var(--ink); border-color: var(--ink); color: var(--on-ink); font-weight: 600; }
 </style>

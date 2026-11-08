@@ -45,7 +45,7 @@
   }
 
   function newSearch(): Search {
-    return { id: newId('s-'), name: '', keywords: [], city: null, distanceKm: 30, contracts: ['CDI', 'CDD'], fullTime: null, salaryMin: null, sources: ['france_travail', 'adzuna'], active: true };
+    return { id: newId('s-'), name: '', kind: 'career', keywords: [], city: null, distanceKm: 30, contracts: ['CDI', 'CDD'], fullTime: null, salaryMin: null, sources: ['france_travail', 'adzuna'], active: true };
   }
 
   async function saveSearch() {
@@ -92,6 +92,12 @@
         <div class="field">Compétences confirmées
           <div class="row" style="--gap:6px; font-weight:400">{#each p.skills as s}<span class="chip small">{s}</span>{:else}<span class="meta">Aucune</span>{/each}</div>
         </div>
+        {#if p.careerGoal || p.stopgapJobs.length}
+          <div class="grid2" style="font-size:14px">
+            <span>Métier visé : {p.careerGoal || '—'}</span>
+            <span>Jobs alimentaires : {p.stopgapJobs.join(', ') || '—'}{p.stopgapConstraints ? ` (${p.stopgapConstraints})` : ''}</span>
+          </div>
+        {/if}
         <div class="field">Expériences
           <ul class="list" style="font-weight:400;font-size:14px;color:var(--ink-2)">{#each p.experiences as e}<li>{e.role} — {e.company} ({e.start}–{e.end})</li>{/each}</ul>
         </div>
@@ -108,7 +114,7 @@
         <ul class="list">
           {#each store.searches as s (s.id)}
             <li class="item">
-              <div class="grow"><strong>{s.name || s.keywords.join(', ')}</strong><br /><span class="meta">{s.city?.name ?? 'Toute la France'} · {s.distanceKm} km · {contractsLabel(s)}{s.lastRunAt ? ` · collectée le ${shortDate(s.lastRunAt)}` : ''}</span></div>
+              <div class="grow"><strong>{s.name || s.keywords.join(', ')}</strong> {#if s.kind === 'stopgap'}<span class="badge warn">Job alimentaire</span>{:else}<span class="badge">Métier</span>{/if}<br /><span class="meta">{s.city?.name ?? 'Toute la France'} · {s.distanceKm} km · {contractsLabel(s)}{s.lastRunAt ? ` · collectée le ${shortDate(s.lastRunAt)}` : ''}</span></div>
               <label class="check"><input type="checkbox" checked={s.active} onchange={() => store.saveSearch({ ...$state.snapshot(s), active: !s.active })} />Active</label>
               <button class="btn sm icon-btn" style="width:34px" aria-label="Modifier « {s.name} »" onclick={() => (search = structuredClone($state.snapshot(s)))}><Icon name="edit" size={15} /></button>
               <button class="btn sm icon-btn" style="width:34px" aria-label="Supprimer « {s.name} »" onclick={() => store.deleteSearch(s.id)}><Icon name="trash" size={15} /></button>
@@ -179,7 +185,13 @@
   <Modal title="Recherche" onclose={() => (search = null)}>
     <div class="scroll stack">
       <label class="field">Nom<input class="input" bind:value={search.name} placeholder="ex. Administratif · Lyon" /></label>
-      <SearchEditor bind:search suggestions={p.suggestedJobs} />
+      <div class="field">Type de recherche
+        <div class="row" style="font-weight:400" role="radiogroup" aria-label="Type de recherche">
+          <button type="button" role="radio" class="chip" class:on={search.kind === 'career'} aria-checked={search.kind === 'career'} onclick={() => (search!.kind = 'career')}>Mon métier</button>
+          <button type="button" role="radio" class="chip" class:on={search.kind === 'stopgap'} aria-checked={search.kind === 'stopgap'} onclick={() => (search!.kind = 'stopgap')}>Job alimentaire</button>
+        </div>
+      </div>
+      <SearchEditor bind:search suggestions={search.kind === 'stopgap' ? p.stopgapJobs : p.suggestedJobs} />
     </div>
     {#snippet actions()}
       <button class="btn" onclick={() => (search = null)}>Annuler</button>
@@ -202,8 +214,8 @@
 
 <style>
   .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
-  .pdf-thumb { width: 52px; height: 64px; border-radius: 6px; background: #f1f1ec; border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--bad); flex: none; }
-  .drop { border: 1.5px dashed #c9c9c2; border-radius: 10px; padding: 16px; display: flex; gap: 10px; align-items: center; justify-content: center; font-size: 14px; color: #52525b; cursor: pointer; }
+  .pdf-thumb { width: 52px; height: 64px; border-radius: 6px; background: var(--sunken); border: 1px solid var(--line); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--bad); flex: none; }
+  .drop { border: 1.5px dashed var(--field-strong); border-radius: 10px; padding: 16px; display: flex; gap: 10px; align-items: center; justify-content: center; font-size: 14px; color: var(--ink-4); cursor: pointer; }
   .drop:hover, .drop:focus-within { border-color: var(--accent); background: var(--accent-soft); }
   .item { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px; flex-wrap: wrap; }
   .item:last-child { border-bottom: 0; }

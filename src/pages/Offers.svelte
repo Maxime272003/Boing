@@ -10,20 +10,27 @@
   let filter = $state<Filter>('all');
   let sort = $state<'match' | 'date'>('match');
   let q = $state('');
+  let kindFilter = $state<'all' | 'career' | 'stopgap'>('all');
 
   const norm = (s: string) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
   const score = (o: Offer) => store.analyses[o.id]?.score ?? null;
 
+  const ofKind = (l: Offer[]) => (kindFilter === 'all' ? l : l.filter((o) => store.offerKind(o) === kindFilter));
+  const base = $derived(ofKind(store.visibleOffers));
   const counts = $derived({
-    all: store.visibleOffers.length,
-    new: store.visibleOffers.filter((o) => !o.seen).length,
-    good: store.visibleOffers.filter((o) => (score(o) ?? 0) >= 70).length,
-    fav: store.visibleOffers.filter((o) => o.favorite).length,
-    hidden: store.offers.filter((o) => o.hidden).length
+    all: base.length,
+    new: base.filter((o) => !o.seen).length,
+    good: base.filter((o) => (score(o) ?? 0) >= 70).length,
+    fav: base.filter((o) => o.favorite).length,
+    hidden: ofKind(store.offers.filter((o) => o.hidden)).length
+  });
+  const kindCounts = $derived({
+    career: store.visibleOffers.filter((o) => store.offerKind(o) === 'career').length,
+    stopgap: store.visibleOffers.filter((o) => store.offerKind(o) === 'stopgap').length
   });
 
   const list = $derived.by(() => {
-    let l = filter === 'hidden' ? store.offers.filter((o) => o.hidden) : store.visibleOffers;
+    let l = filter === 'hidden' ? ofKind(store.offers.filter((o) => o.hidden)) : base;
     if (filter === 'new') l = l.filter((o) => !o.seen);
     if (filter === 'good') l = l.filter((o) => (score(o) ?? 0) >= 70);
     if (filter === 'fav') l = l.filter((o) => o.favorite);
@@ -71,6 +78,14 @@
       </button>
     </div>
   </header>
+
+  {#if store.hasStopgap}
+    <div class="seg" role="radiogroup" aria-label="Type d'offres">
+      <button role="radio" aria-checked={kindFilter === 'all'} onclick={() => (kindFilter = 'all')}>Tout</button>
+      <button role="radio" aria-checked={kindFilter === 'career'} onclick={() => (kindFilter = 'career')}>Mon métier · {kindCounts.career}</button>
+      <button role="radio" aria-checked={kindFilter === 'stopgap'} onclick={() => (kindFilter = 'stopgap')}>Jobs alimentaires · {kindCounts.stopgap}</button>
+    </div>
+  {/if}
 
   <div class="spread">
     <div class="row" role="group" aria-label="Filtres rapides">
@@ -125,6 +140,7 @@
             <div class="row" style="--gap:8px">
               <a class="title" href={href(`/offres/${o.id}`)}>{cleanTitle(o.title)}</a>
               {#if !o.seen}<span class="badge">NOUVEAU</span>{/if}
+              {#if store.hasStopgap && store.offerKind(o) === 'stopgap'}<span class="badge warn">Job alimentaire</span>{/if}
               {#if store.applicationFor(o.id)}<span class="badge good">Candidature</span>{/if}
             </div>
             <div class="meta row" style="--gap:6px 14px"><span>{o.company}</span><span>{o.location}</span>{#if o.contractLabel}<span>{o.contractLabel}{o.workingTime ? ` · ${o.workingTime.toLowerCase()}` : ''}</span>{/if}<span>{o.source} · {ago(o.publishedAt ?? o.fetchedAt)}</span></div>
@@ -146,9 +162,12 @@
 </div>
 
 <style>
-  .searchbox { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--field); border-radius: 8px; background: #fff; min-width: 260px; color: var(--muted); }
+  .seg { display: inline-flex; align-self: flex-start; background: var(--hover); border-radius: 10px; padding: 4px; gap: 4px; }
+  .seg button { border: 0; background: transparent; height: 36px; padding: 0 14px; border-radius: 7px; font-size: 14px; font-weight: 600; color: var(--ink-3); cursor: pointer; }
+  .seg button[aria-checked='true'] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+  .searchbox { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--field); border-radius: 8px; background: var(--panel); min-width: 260px; color: var(--muted); }
   .searchbox input { border: 0; outline: 0; font: inherit; font-size: 14px; flex: 1; background: transparent; color: var(--ink); }
-  .offer { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .offer { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
   .offer-info { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .title { font-size: 16px; font-weight: 600; color: var(--ink); text-decoration: none; }
   .title:hover { color: var(--accent); text-decoration: underline; }
@@ -156,5 +175,5 @@
   .tier { font-size: 12px; font-weight: 600; margin-right: 4px; }
   .tier.high { color: var(--good); }
   .tier.mid { color: var(--warn); }
-  .tier.low { color: #52525b; }
+  .tier.low { color: var(--ink-4); }
 </style>

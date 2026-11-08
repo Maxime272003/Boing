@@ -10,6 +10,7 @@ import type {
   Offer,
   Profile,
   Search,
+  SearchKind,
   SecretStatus,
   Settings,
   SourceId
@@ -56,7 +57,10 @@ export function emptyProfile(): Profile {
     languages: [],
     availability: '',
     drivingLicense: false,
-    suggestedJobs: []
+    suggestedJobs: [],
+    careerGoal: '',
+    stopgapJobs: [],
+    stopgapConstraints: ''
   };
 }
 
@@ -114,6 +118,15 @@ class AppStore {
     return this.secrets.claude_api_key;
   }
 
+  /** Métier ou job alimentaire : d'après la recherche qui a trouvé l'offre. */
+  offerKind(o: Offer): SearchKind {
+    return o.kind ?? this.searches.find((s) => s.id === o.searchId)?.kind ?? 'career';
+  }
+
+  get hasStopgap() {
+    return this.searches.some((s) => s.kind === 'stopgap');
+  }
+
   get visibleOffers() {
     return this.offers.filter((o) => !o.hidden);
   }
@@ -156,14 +169,14 @@ class AppStore {
       b.list<LetterTemplate>('letters'),
       b.secretStatus()
     ]);
-    this.profile = profile;
+    this.profile = profile ? { ...emptyProfile(), ...profile } : null;
     const s = { ...defaultSettings(), ...(settings ?? {}) };
     if (s.usage.month !== currentMonth()) s.usage = { month: currentMonth(), inputTokens: 0, outputTokens: 0, calls: 0 };
     this.settings = s;
-    this.searches = searches;
+    this.searches = searches.map((x) => ({ ...x, kind: x.kind ?? 'career' }));
     this.offers = offers;
     this.analyses = Object.fromEntries(analyses.map((a) => [a.id, a]));
-    this.applications = applications;
+    this.applications = applications.map((a) => ({ ...a, kind: a.kind ?? 'career' }));
     this.letters = letters;
     this.secrets = { ...EMPTY_SECRETS, ...secrets };
   }
@@ -255,7 +268,7 @@ class AppStore {
           try {
             const found = await this.backend.fetchOffers(src, criteriaOf(search, firstRun ? 31 : 7));
             const now = new Date().toISOString();
-            const keep = found.filter((o) => passesCriteria(o, search)).map((o) => ({ ...o, searchId: search.id, fetchedAt: now }));
+            const keep = found.filter((o) => passesCriteria(o, search)).map((o) => ({ ...o, searchId: search.id, kind: search.kind, fetchedAt: now }));
             added += await this.backend.insertNew('offers', keep);
           } catch (e) {
             errors.push(this.errorText(e));
@@ -288,7 +301,7 @@ class AppStore {
         const offer = this.offers.find((o) => o.id === id);
         if (!offer) continue;
         try {
-          const a = await ai.analyseOffer(this.aiContext(), this.profile, offer);
+          const a = await ai.analyseOffer(this.aiContext(), this.profile, offer, this.offerKind(offer));
           await this.backend.put('analyses', a.id, a);
           this.analyses[a.id] = a;
         } catch (e) {
@@ -314,16 +327,18 @@ class AppStore {
     const offer = this.offers.find((o) => o.id === offerId);
     if (!offer) throw new Error('Offre introuvable');
     const defaultTpl = this.letters.find((l) => l.isDefault);
+    const kind = this.offerKind(offer);
     const app: Application = {
       id: newId('app-'),
       offerId,
       offer: $state.snapshot(offer) as Offer,
+      kind,
       score: this.analyses[offerId]?.score ?? null,
       status: 'draft',
       cvChanges: [],
       cvTemplate: 'sobre',
       letter: '',
-      letterOptions: { tone: 'professionnel', length: 'standard', points: [], instruction: '', templateId: defaultTpl?.id },
+      letterOptions: { tone: kind === 'stopgap' ? 'direct' : 'professionnel', length: kind === 'stopgap' ? 'courte' : 'standard', points: [], instruction: '', templateId: kind === 'stopgap' ? undefined : defaultTpl?.id },
       mail: { to: offer.applyEmail ?? '', subject: '', body: '' },
       mode: offer.applyEmail ? 'smtp' : 'site',
       checks: { cv: false, letter: false, company: false },

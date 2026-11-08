@@ -25,7 +25,7 @@
 </div>
 
 <style>
-  .cv { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 26px; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 14px; color: var(--ink-3); }
+  .cv { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 26px; font-size: 14px; line-height: 1.6; display: flex; flex-direction: column; gap: 14px; color: var(--ink-3); }
   .cv.accent { border: 2px solid var(--accent); padding: 25px; }
   .name { font-size: 18px; color: var(--ink); }
   .h { color: var(--ink); }

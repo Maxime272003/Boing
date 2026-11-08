@@ -73,3 +73,10 @@ export async function onboard(page: Page, { claude = true, sources = true }: Onb
 export async function mockState<T>(page: Page, fn: string): Promise<T> {
   return page.evaluate((f) => (new Function('b', `return (${f})(b)`))(window.__boing), fn) as Promise<T>;
 }
+
+/** Attend que toutes les offres affichées aient leur score (l'analyse démarre juste après la collecte). */
+export async function analysed(page: Page) {
+  await expect(page.getByTestId('offer').first()).toBeVisible();
+  await expect(page.locator('[data-testid="offer"] .score.none')).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByRole('status').filter({ hasText: 'Claude analyse' })).toBeHidden();
+}

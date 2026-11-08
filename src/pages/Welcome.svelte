@@ -26,6 +26,7 @@
   let search = $state<Search>({
     id: newId('s-'),
     name: 'Ma recherche',
+    kind: 'career',
     keywords: [],
     city: null,
     distanceKm: 30,
@@ -35,6 +36,30 @@
     sources: ['france_travail', 'adzuna'],
     active: true
   });
+
+  // Job alimentaire en attendant : une deuxième recherche, plus large et plus proche.
+  let wantStopgap = $state(false);
+  let stopgap = $state<Search>({
+    id: newId('s-'),
+    name: 'Job alimentaire',
+    kind: 'stopgap',
+    keywords: [],
+    city: null,
+    distanceKm: 10,
+    contracts: [],
+    fullTime: null,
+    salaryMin: null,
+    sources: ['france_travail', 'adzuna'],
+    active: true
+  });
+
+  function toggleStopgap() {
+    wantStopgap = !wantStopgap;
+    if (wantStopgap) {
+      if (!stopgap.keywords.length) stopgap.keywords = profile.stopgapJobs.slice(0, 2);
+      if (!stopgap.city) stopgap.city = search.city;
+    }
+  }
 
   const hasCv = $derived(!!profile.cvText || !!profile.firstName);
 
@@ -63,6 +88,7 @@
         editing = true;
       }
       search.keywords = profile.suggestedJobs.slice(0, 3);
+      stopgap.keywords = [];
     } catch (e) {
       readError = store.errorText(e);
     } finally {
@@ -90,8 +116,13 @@
     finishing = true;
     try {
       search.name = search.keywords.slice(0, 2).join(', ') + (search.city ? ` · ${search.city.name}` : '');
+      if (!profile.careerGoal) profile.careerGoal = search.keywords[0] ?? '';
       await store.saveProfile(profile);
       await store.saveSearch(search);
+      if (wantStopgap && stopgap.keywords.length) {
+        stopgap.name = `Job alimentaire · ${stopgap.keywords.slice(0, 2).join(', ')}`;
+        await store.saveSearch(stopgap);
+      }
       await store.saveSettings({ onboarded: true });
       router.go('/offres', true);
       if (store.activeSources.length) void store.refreshOffers();
@@ -189,6 +220,21 @@
           <p class="lead">Ces critères servent à récupérer les offres. Tu pourras les changer à tout moment.</p>
         </div>
         <SearchEditor bind:search suggestions={profile.suggestedJobs} />
+
+        <div class="stopgap stack" style="--gap:18px">
+          <label class="check toggle">
+            <input type="checkbox" checked={wantStopgap} onchange={toggleStopgap} />
+            <span><strong>J'ai aussi besoin d'un job alimentaire en attendant</strong><br /><span class="hint">Une deuxième recherche, plus proche et plus large. Claude note ces offres sur la chance d'être prise vite et de tenir le poste, et prépare un CV adapté.</span></span>
+          </label>
+          {#if wantStopgap}
+            <SearchEditor bind:search={stopgap} suggestions={profile.stopgapJobs} />
+            <label class="field">Tes contraintes pour ce job
+              <input class="input" bind:value={profile.stopgapConstraints} placeholder="ex. temps partiel, pas le dimanche, soirs OK" />
+              <span class="hint">Claude en tient compte pour noter les offres et rédiger.</span>
+            </label>
+          {/if}
+        </div>
+
         {#if !store.activeSources.length}
           <p class="banner note">Aucune source d'offres configurée : ajoute une clé France Travail ou Adzuna dans Paramètres pour recevoir des offres.</p>
         {/if}
@@ -213,14 +259,14 @@
   .top, .body { width: 100%; max-width: 1040px; }
   .top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
   .steps { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; font-size: 14px; }
-  .st { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--field); color: #52525b; }
-  .st.cur { background: var(--ink); border-color: var(--ink); color: #fff; font-weight: 600; }
+  .st { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--field); color: var(--ink-4); }
+  .st.cur { background: var(--ink); border-color: var(--ink); color: var(--on-ink); font-weight: 600; }
   .st.done { background: var(--good-soft); border-color: var(--good-soft); color: var(--good); font-weight: 600; }
   .body { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
   .main { flex: 999 1 560px; min-width: 0; padding: 32px; border-radius: 16px; }
-  .lead { color: #52525b; font-size: 15px; }
+  .lead { color: var(--ink-4); font-size: 15px; }
   .foot { border-top: 1px solid var(--line-soft); padding-top: 22px; }
-  .drop { border: 1.5px dashed #c9c9c2; border-radius: 12px; padding: 28px; display: flex; gap: 12px; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-3); }
+  .drop { border: 1.5px dashed var(--field-strong); border-radius: 12px; padding: 28px; display: flex; gap: 12px; align-items: center; justify-content: center; cursor: pointer; color: var(--ink-3); }
   .drop:hover { border-color: var(--accent); background: var(--accent-soft); }
   .drop:focus-within { outline: 2px solid var(--accent); }
   summary { cursor: pointer; font-weight: 600; font-size: 14px; }
@@ -228,5 +274,8 @@
   dl { margin: 0; display: flex; flex-direction: column; gap: 10px; font-size: 14px; }
   dt { color: var(--muted); font-size: 13px; }
   dd { margin: 0; }
-  .side-note { flex: 1 1 260px; display: flex; gap: 10px; align-items: flex-start; padding: 16px; border-radius: 12px; background: #ededE8; font-size: 13px; color: var(--ink-3); }
+  .stopgap { border: 1px solid var(--line); border-radius: 14px; padding: 18px; background: var(--side); }
+  .toggle { align-items: flex-start; }
+  .toggle input { margin-top: 3px; }
+  .side-note { flex: 1 1 260px; display: flex; gap: 10px; align-items: flex-start; padding: 16px; border-radius: 12px; background: var(--sunken); font-size: 13px; color: var(--ink-3); }
 </style>

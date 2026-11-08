@@ -37,6 +37,12 @@ export function applyChanges(p: Profile, changes: CvChange[]): CvContent {
       cv.experiences[op.exp].bullets.push(op.value);
     }
   }
+  // Les missions masquées sont retirées en dernier (par index d'origine, de la fin vers le début).
+  const hidden = accepted
+    .map((c) => c.op)
+    .filter((op): op is Extract<typeof op, { kind: 'hide_bullet' }> => op.kind === 'hide_bullet')
+    .sort((a, b) => b.index - a.index);
+  for (const op of hidden) cv.experiences[op.exp]?.bullets.splice(op.index, 1);
   return cv;
 }
 
@@ -52,9 +58,13 @@ export function beforeOf(p: Profile, c: CvChange): string {
       return p.skills.join(', ');
     case 'bullet':
       return op.index === null ? '' : (p.experiences[op.exp]?.bullets[op.index] ?? '');
+    case 'hide_bullet':
+      return p.experiences[op.exp]?.bullets[op.index] ?? '';
   }
 }
 
 export function afterOf(c: CvChange): string {
-  return c.op.kind === 'skills' ? c.op.value.join(', ') : c.op.value;
+  if (c.op.kind === 'skills') return c.op.value.join(', ');
+  if (c.op.kind === 'hide_bullet') return '';
+  return c.op.value;
 }

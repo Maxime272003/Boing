@@ -178,15 +178,15 @@
 {/if}
 
 <style>
-  .mode { text-align: left; cursor: pointer; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 96px; box-shadow: inset 0 0 0 1px transparent; }
+  .mode { text-align: left; cursor: pointer; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 96px; box-shadow: inset 0 0 0 1px transparent; }
   .mode.on { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-  .mode span { font-size: 13px; color: #52525b; line-height: 1.45; }
+  .mode span { font-size: 13px; color: var(--ink-4); line-height: 1.45; }
   .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
   .mail { flex: 999 1 520px; min-width: 0; padding: 0; display: flex; flex-direction: column; }
   .line { display: flex; align-items: center; gap: 12px; padding: 0 20px; height: 52px; border-bottom: 1px solid var(--line-soft); font-size: 14px; }
   .line span { width: 56px; color: var(--muted); }
-  .line input { flex: 1; border: 0; outline: 0; font: inherit; }
-  .body { border: 0; outline: 0; resize: vertical; min-height: 220px; padding: 20px; font: inherit; font-size: 15px; line-height: 1.6; }
+  .line input { flex: 1; border: 0; outline: 0; font: inherit; background: transparent; color: var(--ink); }
+  .body { border: 0; outline: 0; resize: vertical; min-height: 220px; padding: 20px; font: inherit; font-size: 15px; line-height: 1.6; background: transparent; color: var(--ink); }
   .atts { padding: 14px 20px; border-top: 1px solid var(--line-soft); }
   .pdf { font-size: 11px; color: var(--bad); }
 </style>

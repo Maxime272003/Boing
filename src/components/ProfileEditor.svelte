@@ -21,6 +21,12 @@
   </div>
   <label class="field">Accroche du CV<textarea class="textarea" rows="2" bind:value={profile.summary}></textarea></label>
 
+  <div class="grid2">
+    <label class="field">Métier visé<input class="input" bind:value={profile.careerGoal} placeholder="ex. Concept artist" /></label>
+    <label class="field">Contraintes pour un job alimentaire<input class="input" bind:value={profile.stopgapConstraints} placeholder="ex. temps partiel, pas le dimanche" /></label>
+  </div>
+  <ChipsInput bind:values={profile.stopgapJobs} label="Jobs alimentaires envisagés" placeholder="ex. Vendeuse" />
+
   <ChipsInput bind:values={profile.skills} label="Compétences confirmées (Claude n'utilise que celles-ci)" placeholder="Ajouter une compétence" />
   <ChipsInput bind:values={profile.languages} label="Langues" placeholder="ex. Anglais (B2)" />
 

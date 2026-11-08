@@ -55,12 +55,61 @@ const CAMILLE = {
   languages: ['Anglais (B2)'],
   availability: 'Immédiate',
   drivingLicense: true,
-  suggestedJobs: ['Assistante administrative', "Chargée d'accueil", 'Assistante de direction', 'Secrétaire']
+  suggestedJobs: ['Assistante administrative', "Chargée d'accueil", 'Assistante de direction', 'Secrétaire'],
+  careerGoal: 'Assistante administrative',
+  stopgapJobs: ['Hôtesse de caisse', 'Vendeuse', 'Agent de saisie']
+};
+
+const LEA = {
+  firstName: 'Léa',
+  lastName: 'Moreau',
+  title: 'Concept artist',
+  email: 'lea.moreau@exemple.fr',
+  phone: '06 98 76 54 32',
+  city: 'Lyon',
+  summary: "Concept artist 2D spécialisée en environnements et en personnages pour le jeu vidéo et l'animation.",
+  experiences: [
+    {
+      role: 'Concept artist freelance',
+      company: 'Jeu vidéo et édition',
+      start: '2023',
+      end: "Aujourd'hui",
+      bullets: [
+        "Recherches d'environnements et de personnages pour deux jeux indépendants",
+        "Illustrations de couverture pour une maison d'édition jeunesse",
+        'Échanges réguliers avec les clients et respect des délais',
+        "Facturation et suivi administratif de l'activité"
+      ]
+    },
+    {
+      role: 'Stagiaire concept art',
+      company: 'Studio Lanterne (animation)',
+      start: '2022',
+      end: '2022',
+      bullets: ['Recherches graphiques de décors pour une série animée', "Participation aux revues d'équipe quotidiennes"]
+    },
+    {
+      role: 'Vendeuse (job étudiant)',
+      company: 'Papeterie Moderne, Lyon',
+      start: '2019',
+      end: '2022',
+      bullets: ['Conseil et vente en boutique', 'Tenue de caisse et encaissements', 'Mise en rayon et vitrines']
+    }
+  ],
+  education: [{ degree: "Diplôme d'illustration et de concept art", school: "École de l'Image, Lyon", year: '2022' }],
+  skills: ['Photoshop', 'Procreate', 'Blender', 'Dessin', 'Conseil client', 'Encaissement', 'Travail en équipe', 'Gestion de projet', 'Respect des délais'],
+  languages: ['Anglais (C1)'],
+  availability: 'Immédiate',
+  drivingLicense: false,
+  suggestedJobs: ['Concept artist', 'Illustratrice', 'Artiste 2D', 'Character designer'],
+  careerGoal: 'Concept artist',
+  stopgapJobs: ['Vendeuse', 'Serveuse', 'Équipière polyvalente', 'Hôtesse de caisse']
 };
 
 function parseCv(p: Json) {
   const text: string = p.cvText ?? '';
   if (/camille\s+martin/i.test(text)) return CAMILLE;
+  if (/l[ée]a\s+moreau/i.test(text)) return LEA;
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const [first = '', ...rest] = (lines[0] ?? '').split(/\s+/);
   return {
@@ -77,13 +126,57 @@ function parseCv(p: Json) {
     languages: [],
     availability: '',
     drivingLicense: /permis b/i.test(text),
-    suggestedJobs: lines[1] ? [lines[1]] : []
+    suggestedJobs: lines[1] ? [lines[1]] : [],
+    careerGoal: lines[1] ?? '',
+    stopgapJobs: ['Vendeuse', 'Employée polyvalente']
   };
 }
 
 // ---------- analyse ----------
 
 const ANALYSES: Record<string, Json> = {
+  // --- Léa, métier visé ---
+  'Studio Cerf-Volant': {
+    score: 88,
+    verdict: 'Très bon match',
+    summary: 'Recherches de décors pour une série animée : tu l’as déjà fait en stage, et le poste est ouvert aux juniors.',
+    strengths: ['Stage de 6 mois en concept art de décors chez Studio Lanterne', 'Photoshop et Blender', 'Deux ans de freelance avec des délais clients'],
+    gaps: ['Le portfolio fera la différence : mets en avant tes décors'],
+    keywords: ['décors', 'accessoires', 'recherches graphiques', 'Blender']
+  },
+  'Brume Games': {
+    score: 66,
+    verdict: 'Match correct',
+    summary: 'Le métier est le bon, mais le poste demande 3 ans de production et Unreal Engine.',
+    strengths: ['Environnements pour deux jeux indépendants', 'Blender pour les volumes'],
+    gaps: ['3 ans en production de jeu vidéo demandés', "Unreal Engine n'apparaît pas sur ton CV"],
+    keywords: ['environnements', 'blockout', 'jeu vidéo']
+  },
+  // --- Léa, jobs alimentaires (on note la chance d'être prise vite et de tenir le poste) ---
+  'stopgap:Atelier Pigment': {
+    score: 91,
+    verdict: 'Très bon match',
+    summary: 'Trois ans de vente en papeterie, une pratique artistique et un temps partiel sans dimanche : un poste taillé pour toi en attendant.',
+    strengths: ['3 ans de vente et de caisse chez Papeterie Moderne', 'Ta pratique du dessin rend ton conseil crédible auprès des clients', '20 h par semaine, pas de dimanche : compatible avec ton activité'],
+    gaps: ['CDD de 6 mois seulement'],
+    keywords: ['conseil client', 'encaissement', 'vitrines', 'pratique artistique']
+  },
+  'stopgap:Librairie du Passage': {
+    score: 84,
+    verdict: 'Bon match',
+    summary: 'Vente en papeterie et caisse : tu es opérationnelle tout de suite, à 24 h par semaine.',
+    strengths: ['Expérience de vente et de caisse en papeterie', 'Temps partiel', 'Débutant accepté : recrutement rapide probable'],
+    gaps: ['Le samedi est travaillé'],
+    keywords: ['conseil', 'encaissement', 'mise en rayon']
+  },
+  'stopgap:Brasserie des Terreaux': {
+    score: 42,
+    verdict: 'Match faible',
+    summary: 'Temps plein, soirs et dimanches : peu compatible avec ton activité, et une expérience en salle est demandée.',
+    strengths: ['Contact client', 'Travail en équipe'],
+    gaps: ['Temps plein avec coupures, soirs et dimanches', "Pas d'expérience de service en salle"],
+    keywords: ['service en salle', 'terrasse']
+  },
   'Cabinet Vauban Conseil': {
     score: 92,
     verdict: 'Très bon match',
@@ -194,6 +287,57 @@ function genericAnalysis(p: Json) {
 // ---------- adapt_cv ----------
 
 const ADAPTATIONS: Record<string, Json[]> = {
+  'stopgap:Atelier Pigment': [
+    {
+      title: 'Intitulé adapté au poste',
+      why: "Le recruteur cherche une vendeuse : ton titre le dit d'abord, ton métier reste visible dans l'accroche.",
+      op: { kind: 'title', value: 'Vendeuse — conseil client' }
+    },
+    {
+      title: 'Accroche réécrite',
+      why: 'Met en avant la vente, la caisse et ta disponibilité, puis explique en une phrase pourquoi tu cherches ce poste.',
+      op: {
+        kind: 'summary',
+        value:
+          "3 ans de vente et d'encaissement en papeterie, et le dessin comme métier : je peux conseiller les clients sur leur pratique. Disponible à temps partiel, en parallèle de mon activité de concept artist."
+      }
+    },
+    {
+      title: 'Mission trop spécialisée masquée',
+      why: "Les recherches pour le jeu vidéo ne parlent pas au recruteur ; ton activité freelance reste visible avec la mission client.",
+      op: { kind: 'hide_bullet', exp: 0, index: 0 }
+    },
+    {
+      title: 'Stage résumé',
+      why: "On garde le travail en équipe, utile en boutique, et on masque le détail technique.",
+      op: { kind: 'hide_bullet', exp: 1, index: 0 }
+    },
+    {
+      title: 'Compétences réordonnées',
+      why: "Le conseil et l'encaissement passent en tête, les logiciels de dessin à la fin.",
+      op: { kind: 'skills', value: ['Conseil client', 'Encaissement', 'Dessin', 'Travail en équipe', 'Respect des délais'] }
+    }
+  ],
+  'Studio Cerf-Volant': [
+    {
+      title: 'Accroche orientée décors',
+      why: "L'offre porte sur des décors et accessoires pour une série : ton accroche le reprend.",
+      op: {
+        kind: 'summary',
+        value: "Concept artist 2D spécialisée en environnements : décors pour une série animée en studio et pour deux jeux indépendants en freelance."
+      }
+    },
+    {
+      title: 'Compétences réordonnées',
+      why: 'Photoshop et Blender sont cités dans l’offre.',
+      op: { kind: 'skills', value: ['Photoshop', 'Blender', 'Dessin', 'Procreate', 'Travail en équipe'] }
+    },
+    {
+      title: 'Job étudiant masqué',
+      why: 'Pour un poste dans ton métier, la vente en boutique n’apporte rien : on retire ses missions.',
+      op: { kind: 'hide_bullet', exp: 2, index: 2 }
+    }
+  ],
   'Cabinet Vauban Conseil': [
     {
       title: 'Accroche réécrite',
@@ -274,6 +418,15 @@ function genericAdaptation(p: Json) {
 // ---------- write_letter ----------
 
 const LETTER_BODY: Record<string, string[]> = {
+  'stopgap:Atelier Pigment': [
+    "J'ai tenu la caisse et conseillé les clients d'une papeterie lyonnaise pendant trois ans, et je dessine tous les jours : c'est mon métier, je suis concept artist.",
+    "Je saurai parler papiers, crayons et techniques avec vos clients, étudiants comme professionnels, et je suis disponible tout de suite à temps partiel, hors dimanche."
+  ],
+  'Studio Cerf-Volant': [
+    "Les décors sont ce que je préfère dessiner. Pendant mon stage chez Studio Lanterne, j'ai réalisé des recherches graphiques de décors pour une série animée, en lien direct avec l'équipe.",
+    "Depuis 2023, je travaille en freelance sur les environnements et les personnages de deux jeux indépendants, ce qui m'a appris à tenir des délais et à intégrer les retours des clients.",
+    "Photoshop et Blender font partie de mon quotidien, et je serais heureuse de vous présenter mon portfolio."
+  ],
   'Cabinet Vauban Conseil': [
     "Depuis cinq ans, j'assure l'accueil et le suivi administratif d'une agence immobilière à Lyon. J'y gère l'agenda du directeur, le standard et, au quotidien, la préparation des devis et le suivi de la facturation.",
     "Votre annonce décrit un rôle de soutien à l'équipe de direction : c'est celui que j'occupe aujourd'hui et que j'aime. Rigoureuse et discrète, je sais organiser les priorités quand le téléphone sonne et qu'un client attend à l'accueil.",
@@ -288,7 +441,14 @@ const LETTER_BODY: Record<string, string[]> = {
 
 function letterParagraphs(p: Json): string[] {
   const company = p.offer?.company ?? '';
+  if (p.mode === 'stopgap' && LETTER_BODY[`stopgap:${company}`]) return LETTER_BODY[`stopgap:${company}`];
   if (LETTER_BODY[company]) return LETTER_BODY[company];
+  if (p.mode === 'stopgap') {
+    return [
+      `Je suis disponible rapidement pour le poste ${posteDe(p.offer?.title ?? '')}.`,
+      'Fiable et à l’aise avec le public, je m’adapte vite et j’aime le travail en équipe.'
+    ];
+  }
   const strengths: string[] = p.analysis?.strengths ?? [];
   const exp = p.profile?.experiences?.[0];
   return [
@@ -308,10 +468,11 @@ function writeLetter(p: Json) {
   const company = p.offer?.company ?? '';
   const title = String(p.offer?.title ?? '').replace(/\s*\(H\/F\)\s*/i, '').trim();
   let paras = [...letterParagraphs(p)];
-  if (o.length === 'courte') paras = paras.slice(0, 2);
+  if (o.length === 'courte' && p.mode !== 'stopgap') paras = paras.slice(0, 2);
   const points: string[] = o.points ?? [];
-  if (o.length === 'detaillee' || points.some((x: string) => /anglais/i.test(x))) {
-    paras.push("Je parle anglais (niveau B2), ce qui me permet d'accueillir aussi des interlocuteurs étrangers.");
+  const english = (p.profile?.languages ?? []).find((l: string) => /anglais/i.test(l));
+  if (english && (o.length === 'detaillee' || points.some((x: string) => /anglais/i.test(x)))) {
+    paras.push(`Je parle anglais (${english.replace(/anglais\s*/i, '').replace(/[()]/g, '') || 'courant'}), ce qui me permet d'accueillir aussi des interlocuteurs étrangers.`);
   }
   if (/d[ée]cembre|disponib|commencer/i.test(o.instruction ?? '')) {
     const month = (o.instruction as string).match(/janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre/i)?.[0];
@@ -363,10 +524,18 @@ export async function fakeClaude(req: CompletionRequest, delayMs = 250): Promise
       out = parseCv(payload);
       break;
     case 'analyse':
-      out = ANALYSES[payload.offer?.company] ?? genericAnalysis(payload);
+      out =
+        (payload.mode === 'stopgap' ? ANALYSES[`stopgap:${payload.offer?.company}`] : undefined) ??
+        ANALYSES[payload.offer?.company] ??
+        genericAnalysis(payload);
       break;
     case 'adapt_cv':
-      out = { changes: ADAPTATIONS[payload.offer?.company] ?? genericAdaptation(payload) };
+      out = {
+        changes:
+          (payload.mode === 'stopgap' ? ADAPTATIONS[`stopgap:${payload.offer?.company}`] : undefined) ??
+          ADAPTATIONS[payload.offer?.company] ??
+          genericAdaptation(payload)
+      };
       break;
     case 'write_letter':
       out = writeLetter(payload);

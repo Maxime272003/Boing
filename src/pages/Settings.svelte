@@ -301,7 +301,7 @@
   .cols { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
   .subnav { flex: 1 1 180px; max-width: 220px; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 28px; }
   .subnav a { display: flex; align-items: center; height: 40px; padding: 0 12px; border-radius: 8px; color: var(--ink-3); text-decoration: none; font-size: 14px; }
-  .subnav a:hover { background: #e8e8e3; color: var(--ink); }
+  .subnav a:hover { background: var(--hover); color: var(--ink); }
   .block { display: flex; flex-direction: column; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line-soft); }
   .block.last { border-bottom: 0; padding-bottom: 0; }
   .bar { height: 8px; border-radius: 999px; background: var(--line-soft); overflow: hidden; }

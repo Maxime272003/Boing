@@ -43,8 +43,8 @@
   .side { width: 236px; flex: none; padding: 20px 14px; border-right: 1px solid var(--line); background: var(--side); display: flex; flex-direction: column; gap: 4px; height: 100vh; position: sticky; top: 0; }
   .brand { padding: 10px 10px 24px; }
   .nav { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 44px; border-radius: 8px; color: var(--ink-3); text-decoration: none; font-size: 14px; font-weight: 500; }
-  .nav:hover { background: #e8e8e3; color: var(--ink); }
-  .nav[aria-current='page'] { background: var(--ink); color: #fff; }
+  .nav:hover { background: var(--hover); color: var(--ink); }
+  .nav[aria-current='page'] { background: var(--ink); color: var(--on-ink); }
   .nav .badge { margin-left: auto; }
-  .foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+  .foot { margin-top: auto; display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
 </style>

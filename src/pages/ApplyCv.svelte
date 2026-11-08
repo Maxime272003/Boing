@@ -28,7 +28,9 @@
     const added: Record<number, number> = {};
     for (const c of app.cvChanges.filter((c) => c.accepted)) {
       const op = c.op;
-      if (op.kind === 'bullet') {
+      if (op.kind === 'hide_bullet') {
+        removed.add(`b-${op.exp}-${op.index}`);
+      } else if (op.kind === 'bullet') {
         if (op.index === null) {
           const n = (added[op.exp] = (added[op.exp] ?? 0) + 1);
           changed.add(`b-${op.exp}-${profile.experiences[op.exp].bullets.length + n - 1}`);
@@ -54,7 +56,7 @@
     busy = true;
     try {
       const offer = app.offer;
-      app.cvChanges = await adaptCv(store.aiContext(), profile, offer, store.analyses[offer.id] ?? null);
+      app.cvChanges = await adaptCv(store.aiContext(), profile, offer, store.analyses[offer.id] ?? null, app.kind);
       app.history.push({ at: new Date().toISOString(), label: 'CV adapté par Claude' });
       await persist();
       if (!app.cvChanges.length) store.toast("Claude n'a pas proposé de modification.", 'info');
@@ -81,6 +83,7 @@
   }
 
   async function saveEdit(c: CvChange, value: string) {
+    if (c.op.kind === 'hide_bullet') return;
     if (c.op.kind === 'skills') {
       const allowed = profile.skills;
       c.op.value = value.split(',').map((s) => s.trim()).filter((s) => allowed.includes(s));
@@ -103,7 +106,7 @@
     }
   }
 
-  const exp = (c: CvChange) => (c.op.kind === 'bullet' ? profile.experiences[c.op.exp] : null);
+  const exp = (c: CvChange) => (c.op.kind === 'bullet' || c.op.kind === 'hide_bullet' ? profile.experiences[c.op.exp] : null);
 </script>
 
 {#if !app}
@@ -115,9 +118,9 @@
     {#if busy}
       <div class="banner info" role="status"><span class="spinner"></span><span class="grow">Claude adapte ton CV à l'offre…</span></div>
     {:else if app.cvChanges.length}
-      <div class="banner" style="background:#fff;border:1px solid var(--line)">
+      <div class="banner" style="background: var(--panel);border:1px solid var(--line)">
         <span style="color:var(--accent)"><Icon name="sparkle" /></span>
-        <span class="grow"><strong>{app.cvChanges.length} modification{app.cvChanges.length > 1 ? 's' : ''} proposée{app.cvChanges.length > 1 ? 's' : ''}.</strong> Claude a reformulé et réordonné ton CV à partir de ta fiche profil, sans rien inventer.</span>
+        <span class="grow"><strong>{app.cvChanges.length} modification{app.cvChanges.length > 1 ? 's' : ''} proposée{app.cvChanges.length > 1 ? 's' : ''}.</strong> {app.kind === 'stopgap' ? 'Version « job alimentaire » : Claude met en avant ce qui compte pour ce poste et résume ton métier, sans rien inventer.' : 'Claude a reformulé et réordonné ton CV à partir de ta fiche profil, sans rien inventer.'}</span>
         <button class="btn sm" onclick={() => setAll(false)}>Tout refuser</button>
         <button class="btn sm" onclick={() => setAll(true)}>Tout accepter</button>
       </div>
@@ -153,6 +156,8 @@
             {:else}
               {#if c.op.kind === 'skills'}
                 <span class="small">Nouvel ordre : <span class="ins">{afterOf(c)}</span></span>
+              {:else if c.op.kind === 'hide_bullet'}
+                <span class="small">Masquée sur ce CV : <span class="del">{beforeOf(profile, c)}</span></span>
               {:else}
                 {#if beforeOf(profile, c)}<span class="del small">{beforeOf(profile, c)}</span>{/if}
                 <span class="ins small">{afterOf(c)}</span>
@@ -160,13 +165,13 @@
               <div class="row" style="--gap:6px; flex-wrap:nowrap">
                 <button class="btn sm grow" aria-pressed={!c.accepted} onclick={() => setOne(c, false)}>Refuser</button>
                 <button class="btn sm grow" class:good={c.accepted} aria-pressed={c.accepted} onclick={() => setOne(c, true)}>{c.accepted ? 'Acceptée' : 'Accepter'}</button>
-                <button class="btn sm icon-btn" style="width:34px" aria-label="Modifier « {c.title} »" onclick={() => (editingId = c.id)}><Icon name="edit" size={15} /></button>
+                {#if c.op.kind !== 'hide_bullet'}<button class="btn sm icon-btn" style="width:34px" aria-label="Modifier « {c.title} »" onclick={() => (editingId = c.id)}><Icon name="edit" size={15} /></button>{/if}
               </div>
             {/if}
           </div>
         {/each}
         {#if store.analyses[app.offerId]?.gaps.length}
-          <div class="banner" style="background:var(--warn-soft);color:#6b4500;font-size:13px">
+          <div class="banner" style="background:var(--warn-soft);color:var(--warn-ink);font-size:13px">
             Points de l'offre absents de ta fiche profil : {store.analyses[app.offerId].gaps.join(' · ')}. Claude ne les ajoute pas ; complète ta fiche si c'est le cas.
           </div>
         {/if}
@@ -193,10 +198,10 @@
   .cols { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
   .col { flex: 1 1 360px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
   .col.narrow { flex: 1 1 260px; }
-  .mod { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .mod { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
   .mod.off { opacity: 0.65; }
   .mod strong { font-size: 14px; }
-  .why { color: #52525b; line-height: 1.45; }
+  .why { color: var(--ink-4); line-height: 1.45; }
   .small { font-size: 13px; padding: 2px 4px; }
   .foot { border-top: 1px solid var(--line); padding-top: 18px; }
 </style>

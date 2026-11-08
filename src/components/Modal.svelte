@@ -18,6 +18,6 @@
 </dialog>
 
 <style>
-  dialog { border: 0; border-radius: 16px; padding: 24px; width: min(640px, calc(100vw - 32px)); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25); }
-  dialog::backdrop { background: rgba(24, 24, 27, 0.4); }
+  dialog { border: 1px solid var(--line); border-radius: 16px; padding: 24px; background: var(--panel); color: var(--ink); width: min(640px, calc(100vw - 32px)); box-shadow: 0 24px 64px rgba(0, 0, 0, 0.25); }
+  dialog::backdrop { background: rgba(0, 0, 0, 0.45); }
 </style>
