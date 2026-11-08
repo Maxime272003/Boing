@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store } from '$lib/store.svelte';
   import { href, router } from '$lib/router.svelte';
-  import { addDays, cleanTitle } from '$lib/format';
+  import { addDays, cleanTitle, posteDe } from '$lib/format';
   import { buildFiles, fileNames } from '$lib/documents';
   import { toBase64 } from '$lib/bytes';
   import type { Application, SendMode } from '$lib/types';
@@ -16,7 +16,7 @@
     const a = structuredClone($state.snapshot(stored)) as Application;
     if (!a.mail.subject) a.mail.subject = `Candidature — ${cleanTitle(a.offer.title)}`;
     if (!a.mail.body) {
-      a.mail.body = `Madame, Monsieur,\n\nJe vous adresse ma candidature au poste de ${cleanTitle(a.offer.title).toLowerCase()}. Vous trouverez ci-joint mon CV et ma lettre de motivation.\n\nBien cordialement,\n${profile.firstName} ${profile.lastName}\n${profile.phone}`;
+      a.mail.body = `Madame, Monsieur,\n\nJe vous adresse ma candidature au poste ${posteDe(a.offer.title)}. Vous trouverez ci-joint mon CV et ma lettre de motivation.\n\nBien cordialement,\n${profile.firstName} ${profile.lastName}\n${profile.phone}`;
     }
     return a;
   }
@@ -80,6 +80,10 @@
         await store.backend.openUrl(url);
         await markSent('Envoyée depuis ma messagerie');
       } else {
+        if (!app.files?.cv) {
+          const files = await buildFiles(store.backend, app, profile);
+          app.files = { cv: files.cvPath, letter: files.letterPath };
+        }
         await markSent("Envoyée sur le site de l'employeur");
       }
     } catch (e) {

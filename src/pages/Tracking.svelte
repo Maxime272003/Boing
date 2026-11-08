@@ -134,7 +134,7 @@
     <div class="card tight stat"><span class="meta">Envoyées</span><strong data-testid="stat-sent">{stats.sent}</strong></div>
     <div class="card tight stat"><span class="meta">Réponses reçues</span><strong>{stats.answers}</strong></div>
     <div class="card tight stat"><span class="meta">Entretiens</span><strong>{stats.interviews}</strong></div>
-    <div class="card tight stat" class:warn={stats.due}><span>Relances à faire</span><strong>{stats.due}</strong></div>
+    <div class="card tight stat" class:warn={stats.due}><span class="meta" style:color={stats.due ? "inherit" : undefined}>Relances à faire</span><strong>{stats.due}</strong></div>
   </div>
 
   {#each store.followUpsDue as a (a.id)}

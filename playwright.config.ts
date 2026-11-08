@@ -13,7 +13,13 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure'
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 860 } } }],
+  projects: [
+    {
+      name: 'chromium',
+      // PW_CHANNEL=chrome pour utiliser le Chrome installé plutôt que le Chromium de Playwright.
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1360, height: 860 }, channel: process.env.PW_CHANNEL || undefined }
+    }
+  ],
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:1420',

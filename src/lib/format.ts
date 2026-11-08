@@ -58,3 +58,9 @@ export function addDays(iso: string, days: number): string {
 export function formatTokens(n: number): string {
   return new Intl.NumberFormat('fr-FR', { notation: n >= 100000 ? 'compact' : 'standard', maximumFractionDigits: 1 }).format(n);
 }
+
+/** « au poste d'assistante » / « au poste de secrétaire » */
+export function posteDe(title: string): string {
+  const t = cleanTitle(title).toLowerCase();
+  return /^[aeiouyhâàéèêîôû]/i.test(t) ? `d'${t}` : `de ${t}`;
+}

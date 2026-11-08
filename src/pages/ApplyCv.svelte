@@ -38,7 +38,8 @@
         }
       } else {
         changed.add(op.kind);
-        removed.add(op.kind);
+        // Un nouvel ordre des compétences ne retire rien : on ne barre pas l'original.
+        if (op.kind !== 'skills') removed.add(op.kind);
       }
     }
     return { changed, removed };
@@ -150,8 +151,12 @@
                 <button class="btn sm primary" onclick={() => saveEdit(c, (document.getElementById(`edit-${c.id}`) as HTMLTextAreaElement).value)}>Enregistrer</button>
               </div>
             {:else}
-              {#if beforeOf(profile, c)}<span class="del small">{beforeOf(profile, c)}</span>{/if}
-              <span class="ins small">{afterOf(c)}</span>
+              {#if c.op.kind === 'skills'}
+                <span class="small">Nouvel ordre : <span class="ins">{afterOf(c)}</span></span>
+              {:else}
+                {#if beforeOf(profile, c)}<span class="del small">{beforeOf(profile, c)}</span>{/if}
+                <span class="ins small">{afterOf(c)}</span>
+              {/if}
               <div class="row" style="--gap:6px; flex-wrap:nowrap">
                 <button class="btn sm grow" aria-pressed={!c.accepted} onclick={() => setOne(c, false)}>Refuser</button>
                 <button class="btn sm grow" class:good={c.accepted} aria-pressed={c.accepted} onclick={() => setOne(c, true)}>{c.accepted ? 'Acceptée' : 'Accepter'}</button>

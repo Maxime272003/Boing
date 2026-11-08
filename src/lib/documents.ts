@@ -1,7 +1,7 @@
 // Fabrication et enregistrement des PDF d'une candidature.
 import { applyChanges, fullName } from './cv';
 import { renderCv, renderLetter } from './pdf/render';
-import { cleanTitle, slug } from './format';
+import { posteDe, slug } from './format';
 import type { Application, Profile } from './types';
 import type { Backend } from './backend';
 
@@ -22,7 +22,7 @@ export async function letterPdf(app: Application, p: Profile): Promise<Uint8Arra
       senderLines: [p.city, p.phone, p.email],
       recipient: [app.offer.company, 'Service recrutement'],
       date: `${p.city ? `${p.city}, le ` : 'Le '}${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-      subject: `candidature au poste de ${cleanTitle(app.offer.title).toLowerCase()}`
+      subject: `candidature au poste ${posteDe(app.offer.title)}`
     },
     app.letter
   );

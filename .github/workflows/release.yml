@@ -1,0 +1,40 @@
+name: Release
+
+# Pour publier une version : changer "version" dans package.json, committer,
+# puis pousser un tag : git tag v0.2.0 && git push origin v0.2.0
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    name: Installeur Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Clé de signature des mises à jour (voir README, « Mises à jour automatiques »)
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Boing ${{ github.ref_name }}'
+          releaseBody: 'Télécharge le fichier « Boing_…_x64-setup.exe » ci-dessous et lance-le. Les versions déjà installées se mettent à jour toutes seules.'
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true

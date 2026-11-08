@@ -57,7 +57,7 @@ export function createMockBackend(): Backend {
     documents: [],
     opened: [],
     claudeCalls: [],
-    latencyMs: 200,
+    latencyMs: Number(localStorage.getItem('boing-mock-latency') ?? 200),
     reset() {
       localStorage.removeItem(KEY);
       localStorage.removeItem(SECRET_KEY);

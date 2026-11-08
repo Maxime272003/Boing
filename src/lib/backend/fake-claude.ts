@@ -3,6 +3,7 @@
 // pour les offres d'exemple. Pour une offre inconnue, une réponse générique est construite.
 
 import { taskOf } from '../ai/prompts';
+import { posteDe } from '../format';
 import type { Completion, CompletionRequest } from '../types';
 
 type Json = Record<string, any>;
@@ -256,7 +257,7 @@ function genericAdaptation(p: Json) {
   return [
     {
       title: 'Accroche réécrite',
-      why: `Ton accroche reprend les attentes du poste de ${p.offer?.title ?? 'ce poste'}.`,
+      why: `Ton accroche reprend les attentes du poste ${posteDe(p.offer?.title ?? '')}.`,
       op: {
         kind: 'summary',
         value: `${p.profile?.title || 'Professionnelle'} avec ${years} d'expérience${top.length ? ` en ${top.join(', ').toLowerCase()}` : ''}.`
@@ -296,7 +297,7 @@ function letterParagraphs(p: Json): string[] {
       : `Je souhaite mettre mes compétences au service de ${company}.`,
     strengths.length
       ? `Plusieurs points de votre annonce correspondent à mon parcours : ${strengths.slice(0, 2).map((s) => s.toLowerCase()).join(' ; ')}.`
-      : `Votre annonce pour le poste de ${p.offer?.title ?? ''} a retenu toute mon attention.`,
+      : `Votre annonce pour le poste ${posteDe(p.offer?.title ?? '')} a retenu toute mon attention.`,
     'Organisée et fiable, je m’adapte vite à de nouveaux outils et à de nouvelles équipes.'
   ];
 }
@@ -318,9 +319,9 @@ function writeLetter(p: Json) {
   }
   const opening =
     o.tone === 'chaleureux'
-      ? `C'est avec un réel enthousiasme que je vous propose ma candidature au poste de ${title.toLowerCase()}.`
+      ? `C'est avec un réel enthousiasme que je vous propose ma candidature au poste ${posteDe(title)}.`
       : o.tone === 'direct'
-        ? `Je candidate au poste de ${title.toLowerCase()} chez ${company}.`
+        ? `Je candidate au poste ${posteDe(title)} chez ${company}.`
         : '';
   const closing =
     o.tone === 'direct'
@@ -332,7 +333,7 @@ function writeLetter(p: Json) {
   return {
     letter,
     mailSubject: `Candidature — ${title}`,
-    mailBody: `Madame, Monsieur,\n\nJe vous adresse ma candidature au poste de ${title.toLowerCase()}. Vous trouverez ci-joint mon CV et ma lettre de motivation.\n\nJe reste disponible pour un entretien à votre convenance.\n\nBien cordialement,\n${name}${p.profile?.phone ? `\n${p.profile.phone}` : ''}`
+    mailBody: `Madame, Monsieur,\n\nJe vous adresse ma candidature au poste ${posteDe(title)}. Vous trouverez ci-joint mon CV et ma lettre de motivation.\n\nJe reste disponible pour un entretien à votre convenance.\n\nBien cordialement,\n${name}${p.profile?.phone ? `\n${p.profile.phone}` : ''}`
   };
 }
 
@@ -344,13 +345,18 @@ function followUp(p: Json) {
   const date = p.sentAt ? new Date(p.sentAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : 'récemment';
   return {
     subject: `Relance — candidature ${title}`,
-    body: `Madame, Monsieur,\n\nJe me permets de revenir vers vous au sujet de ma candidature au poste de ${title.toLowerCase()}, envoyée le ${date}. Ce poste m'intéresse toujours beaucoup et je reste disponible pour un échange.\n\nBien cordialement,\n${name}`
+    body: `Madame, Monsieur,\n\nJe me permets de revenir vers vous au sujet de ma candidature au poste ${posteDe(title)}, envoyée le ${date}. Ce poste m'intéresse toujours beaucoup et je reste disponible pour un échange.\n\nBien cordialement,\n${name}`
   };
 }
 
 export async function fakeClaude(req: CompletionRequest, delayMs = 250): Promise<Completion> {
   const task = taskOf(req.system);
-  const payload: Json = JSON.parse(req.messages[req.messages.length - 1]?.content ?? '{}');
+  let payload: Json = {};
+  try {
+    payload = JSON.parse(req.messages[req.messages.length - 1]?.content ?? '{}');
+  } catch {
+    payload = {};
+  }
   let out: unknown;
   switch (task) {
     case 'parse_cv':
@@ -369,7 +375,9 @@ export async function fakeClaude(req: CompletionRequest, delayMs = 250): Promise
       out = followUp(payload);
       break;
     default:
-      throw new Error('Tâche inconnue pour Claude simulé');
+      // Message libre (ex. test de connexion dans Paramètres)
+      if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
+      return { text: 'OK', inputTokens: 10, outputTokens: 1 };
   }
   if (delayMs) await new Promise((r) => setTimeout(r, delayMs));
   const text = JSON.stringify(out);

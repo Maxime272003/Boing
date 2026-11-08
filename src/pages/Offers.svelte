@@ -121,7 +121,7 @@
         {@const s = score(o)}
         <li class="offer" data-testid="offer">
           <ScoreBadge score={s} />
-          <div class="info">
+          <div class="offer-info">
             <div class="row" style="--gap:8px">
               <a class="title" href={href(`/offres/${o.id}`)}>{cleanTitle(o.title)}</a>
               {#if !o.seen}<span class="badge">NOUVEAU</span>{/if}
@@ -149,7 +149,7 @@
   .searchbox { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border: 1px solid var(--field); border-radius: 8px; background: #fff; min-width: 260px; color: var(--muted); }
   .searchbox input { border: 0; outline: 0; font: inherit; font-size: 14px; flex: 1; background: transparent; color: var(--ink); }
   .offer { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-  .info { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+  .offer-info { flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .title { font-size: 16px; font-weight: 600; color: var(--ink); text-decoration: none; }
   .title:hover { color: var(--accent); text-decoration: underline; }
   .reason { font-size: 13px; color: var(--ink-3); }
